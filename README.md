@@ -108,10 +108,32 @@ What is the primary focus of psychology?,Behavior,Mental processes,Both A and B,
 - Rejects invalid rows and records them in `upload_errors`
 - Produces a summary with total, success, and failed rows
 
-## Notes for production
+## Vercel deployment
 
-- Wire form submits to Supabase Auth in the auth form components
-- Call `persistUploadBatch` from a server action or route handler after preview confirmation
-- Add true role-based path authorization by reading `profiles.role` in middleware or server layouts
-- Replace demo dashboard data with live Supabase queries
-- Add storage upload if raw import files should be retained in Supabase Storage
+1. Push the latest code to GitHub.
+2. Import the repository into Vercel.
+3. In Vercel project settings, add these environment variables for `Production`, `Preview`, and `Development`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+4. In Supabase SQL Editor, run these files before the first production login:
+   - [`supabase/schema.sql`](./supabase/schema.sql)
+   - [`supabase/secure_roles.sql`](./supabase/secure_roles.sql)
+   - [`supabase/review_materials.sql`](./supabase/review_materials.sql)
+5. Redeploy the project in Vercel after saving the environment variables.
+
+Important:
+- `SUPABASE_SERVICE_ROLE_KEY` must only be set in server environments like Vercel, never exposed in the browser.
+- New public registrations are student-only. Create admin/instructor accounts from Supabase or your protected admin workflow.
+- Uploaded mock exams create separate exam batches, so a later CSV upload does not merge into an older exam automatically.
+
+## Production notes
+
+- Active dashboards, mock exams, quiz mode, flashcards, results, and reviewer PDFs use live Supabase data.
+- Flashcards are generated from uploaded question-bank data; they are not imported separately.
+- If a student leaves an exam mid-session, progress resumes on the same device/browser through local autosave.
+- Register one fresh student account after deployment and verify it can see existing and future uploads.
