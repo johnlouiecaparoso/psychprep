@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useEffect, useState } from "react";
 
 export default function StudentPage() {
-  const { userId } = useAuth();
+  const { userId, user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<StudentStats | null>(null);
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
   const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
@@ -23,13 +23,10 @@ export default function StudentPage() {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
+      if (!userId || authLoading) return;
+      
       try {
         const dashboardService = new DashboardService();
-        
-        // Get current user ID from auth context
-        if (!userId) {
-          throw new Error('User not authenticated');
-        }
         
         const [
           statsData,
@@ -59,11 +56,11 @@ export default function StudentPage() {
     };
 
     fetchDashboardData();
-  }, [userId]);
+  }, [userId, authLoading]);
 
   const readiness = getReadiness(readinessScore);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <AppShell
         role="student"
