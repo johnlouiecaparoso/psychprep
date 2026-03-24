@@ -1,8 +1,8 @@
 {
-  "/dashboard/page": "app/dashboard/page.js",
-  "/register/page": "app/register/page.js",
-  "/profile/page": "app/profile/page.js",
   "/login/page": "app/login/page.js",
   "/student/flashcards/page": "app/student/flashcards/page.js",
-  "/student/page": "app/student/page.js"
+  "/student/reviewers/page": "app/student/reviewers/page.js",
+  "/student/page": "app/student/page.js",
+  "/student/mock-exams/page": "app/student/mock-exams/page.js",
+  "/student/quiz/page": "app/student/quiz/page.js"
 }

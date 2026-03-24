@@ -47,3 +47,51 @@ export type DashboardStat = {
   value: string;
   helper: string;
 };
+
+export type ReviewQuestion = ParsedImportRow & {
+  id: string;
+  mock_exam_id: string;
+};
+
+export type MockExamSummary = {
+  id: string;
+  title: string;
+  subject: string;
+  questionCount: number;
+  topicCount: number;
+};
+
+export type AttemptReviewItem = {
+  questionId: string;
+  questionText: string;
+  explanation: string;
+  topic: string;
+  subject: string;
+  selectedChoice: "A" | "B" | "C" | "D" | null;
+  correctChoice: "A" | "B" | "C" | "D";
+  isCorrect: boolean;
+  choices: {
+    choice_key: "A" | "B" | "C" | "D";
+    choice_text: string;
+    is_correct: boolean;
+  }[];
+};
+
+export type AttemptResult = {
+  id: string;
+  score: number;
+  totalItems: number;
+  correctCount: number;
+  weakTopics: string[];
+  items: AttemptReviewItem[];
+};
+
+export type ReviewMaterial = {
+  id: string;
+  title: string;
+  description: string;
+  subject: string;
+  topic: string;
+  fileName: string;
+  createdAt: string;
+};

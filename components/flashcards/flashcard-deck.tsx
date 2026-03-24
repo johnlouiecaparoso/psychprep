@@ -1,66 +1,212 @@
 "use client";
 
 import * as React from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Shuffle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import type { ParsedImportRow } from "@/lib/types";
+import type { ParsedImportRow, ReviewQuestion } from "@/lib/types";
 
-export function FlashcardDeck({ cards }: { cards: ParsedImportRow[] }) {
+type FlashcardItem = ParsedImportRow | ReviewQuestion;
+type ReviewMark = "know" | "hard" | "again";
+
+function buildFlashcardPrompt(question: string) {
+  const cleaned = question.replace(/\s+/g, " ").trim();
+  const withoutLeadingPrompt = cleaned
+    .replace(/^What is\s+/i, "")
+    .replace(/^Which\s+/i, "")
+    .replace(/^Who\s+/i, "")
+    .replace(/^When\s+/i, "")
+    .replace(/^Where\s+/i, "")
+    .replace(/^Why\s+/i, "")
+    .replace(/^How\s+/i, "")
+    .replace(/^A[n]?\s+/i, "");
+
+  const words = withoutLeadingPrompt.split(" ");
+  const shortened = words.slice(0, 10).join(" ");
+  return shortened.length < withoutLeadingPrompt.length ? `${shortened}...` : shortened;
+}
+
+function buildShortAnswer(answer: string) {
+  const cleaned = answer.replace(/\s+/g, " ").trim();
+  const words = cleaned.split(" ");
+  const shortened = words.slice(0, 2).join(" ");
+  return shortened.length < cleaned.length ? `${shortened}...` : shortened;
+}
+
+function shuffleItems<T>(items: T[]) {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+}
+
+export function FlashcardDeck({
+  cards,
+  weakTopics = []
+}: {
+  cards: FlashcardItem[];
+  weakTopics?: string[];
+}) {
+  const [selectedSubject, setSelectedSubject] = React.useState("all");
+  const [selectedTopic, setSelectedTopic] = React.useState("all");
+  const [shuffleMode, setShuffleMode] = React.useState(false);
+  const [weakOnly, setWeakOnly] = React.useState(false);
+  const [orderedCards, setOrderedCards] = React.useState<FlashcardItem[]>(cards);
   const [index, setIndex] = React.useState(0);
   const [flipped, setFlipped] = React.useState(false);
-  const [reviewState, setReviewState] = React.useState<Record<number, "know" | "review">>({});
+  const [reviewState, setReviewState] = React.useState<Record<string, ReviewMark>>({});
 
-  const current = cards[index];
-  const progress = (Object.keys(reviewState).length / cards.length) * 100;
+  const subjects = React.useMemo(() => ["all", ...Array.from(new Set(cards.map((card) => card.subject)))], [cards]);
+  const topics = React.useMemo(() => {
+    const filteredBySubject = selectedSubject === "all" ? cards : cards.filter((card) => card.subject === selectedSubject);
+    return ["all", ...Array.from(new Set(filteredBySubject.map((card) => card.topic)))];
+  }, [cards, selectedSubject]);
 
-  function markCard(state: "know" | "review") {
-    setReviewState((prev) => ({ ...prev, [index]: state }));
+  const filteredCards = React.useMemo(() => {
+    return cards.filter((card) => {
+      const subjectMatch = selectedSubject === "all" || card.subject === selectedSubject;
+      const topicMatch = selectedTopic === "all" || card.topic === selectedTopic;
+      const weakMatch = !weakOnly || weakTopics.includes(card.topic);
+      return subjectMatch && topicMatch && weakMatch;
+    });
+  }, [cards, selectedSubject, selectedTopic, weakOnly, weakTopics]);
+
+  React.useEffect(() => {
+    const nextCards = shuffleMode ? shuffleItems(filteredCards) : filteredCards;
+    setOrderedCards(nextCards);
+    setIndex(0);
     setFlipped(false);
-    setIndex((value) => (value + 1 < cards.length ? value + 1 : value));
+  }, [filteredCards, shuffleMode]);
+
+  const current = orderedCards[index];
+  const progress = orderedCards.length > 0 ? (Object.keys(reviewState).length / orderedCards.length) * 100 : 0;
+  const correctChoice = current?.choices.find((choice) => choice.is_correct);
+
+  const subjectProgress = React.useMemo(() => {
+    const subjectMap = new Map<string, { total: number; know: number; hard: number; again: number }>();
+    orderedCards.forEach((card) => {
+      const currentStats = subjectMap.get(card.subject) ?? { total: 0, know: 0, hard: 0, again: 0 };
+      currentStats.total += 1;
+      const mark = reviewState[(card as ReviewQuestion).id ?? `${card.subject}-${card.topic}-${card.question_text}`];
+      if (mark === "know") currentStats.know += 1;
+      if (mark === "hard") currentStats.hard += 1;
+      if (mark === "again") currentStats.again += 1;
+      subjectMap.set(card.subject, currentStats);
+    });
+    return Array.from(subjectMap.entries());
+  }, [orderedCards, reviewState]);
+
+  function getCardKey(card: FlashcardItem) {
+    return (card as ReviewQuestion).id ?? `${card.subject}-${card.topic}-${card.question_text}`;
+  }
+
+  function markCard(state: ReviewMark) {
+    setReviewState((prev) => ({ ...prev, [getCardKey(current)]: state }));
+    setFlipped(false);
+    setIndex((value) => (value + 1 < orderedCards.length ? value + 1 : value));
+  }
+
+  if (orderedCards.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Flashcards</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-4">
+            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-white px-4 py-2 text-sm">
+              {subjects.map((subject) => <option key={subject} value={subject}>{subject === "all" ? "All subjects" : subject}</option>)}
+            </select>
+            <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 rounded-2xl border bg-white px-4 py-2 text-sm">
+              {topics.map((topic) => <option key={topic} value={topic}>{topic === "all" ? "All topics" : topic}</option>)}
+            </select>
+            <Button variant={shuffleMode ? "default" : "outline"} onClick={() => setShuffleMode((value) => !value)}><Shuffle className="mr-2 h-4 w-4" />{shuffleMode ? "Shuffle on" : "Shuffle off"}</Button>
+            <Button variant={weakOnly ? "default" : "outline"} onClick={() => setWeakOnly((value) => !value)} disabled={weakTopics.length === 0}>Weak topics only</Button>
+          </div>
+          <p className="text-sm text-muted-foreground">No flashcards match the selected filters.</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Flashcards</CardTitle>
-          <div className="text-sm text-muted-foreground">
-            {index + 1} / {cards.length}
+        <CardHeader className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle>Flashcards</CardTitle>
+            <div className="text-sm text-muted-foreground">{index + 1} / {orderedCards.length}</div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-4">
+            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-white px-4 py-2 text-sm">
+              {subjects.map((subject) => <option key={subject} value={subject}>{subject === "all" ? "All subjects" : subject}</option>)}
+            </select>
+            <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 rounded-2xl border bg-white px-4 py-2 text-sm">
+              {topics.map((topic) => <option key={topic} value={topic}>{topic === "all" ? "All topics" : topic}</option>)}
+            </select>
+            <Button variant={shuffleMode ? "default" : "outline"} onClick={() => setShuffleMode((value) => !value)}><Shuffle className="mr-2 h-4 w-4" />{shuffleMode ? "Shuffle on" : "Shuffle off"}</Button>
+            <Button variant={weakOnly ? "default" : "outline"} onClick={() => setWeakOnly((value) => !value)} disabled={weakTopics.length === 0}>Weak topics only</Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Progress value={progress} />
-          <button
-            type="button"
-            onClick={() => setFlipped((value) => !value)}
-            className="flex min-h-[320px] w-full flex-col justify-between rounded-[28px] bg-gradient-to-br from-slate-50 to-emerald-50 p-8 text-left"
-          >
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">{current.subject}</Badge>
+            <Badge variant="outline">{current.topic}</Badge>
+            {weakTopics.includes(current.topic) ? <Badge>Weak area</Badge> : null}
+          </div>
+          <button type="button" onClick={() => setFlipped((value) => !value)} className="flex min-h-[320px] w-full flex-col justify-between rounded-[28px] bg-gradient-to-br from-slate-50 to-emerald-50 p-8 text-left">
             <div className="flex items-center justify-between">
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                {flipped ? "Explanation" : current.topic}
-              </span>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{flipped ? "Answer" : "Quick prompt"}</span>
               <RotateCcw className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-              <h3 className="text-2xl font-semibold">
-                {flipped ? current.explanation : current.question_text}
-              </h3>
               {flipped ? (
-                <p className="mt-4 text-sm text-muted-foreground">
-                  Correct answer: {current.choices.find((choice) => choice.is_correct)?.choice_key}
-                </p>
-              ) : null}
+                <>
+                  <h3 className="text-3xl font-semibold">{buildShortAnswer(correctChoice?.choice_text ?? "No answer available")}</h3>
+                  <p className="mt-4 text-sm text-muted-foreground">Correct option: {correctChoice?.choice_key ?? "-"}</p>
+                </>
+              ) : (
+                <h3 className="mt-3 text-2xl font-semibold">{buildFlashcardPrompt(current.question_text)}</h3>
+              )}
             </div>
           </button>
 
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" onClick={() => markCard("review")}>
-              Review again
-            </Button>
-            <Button onClick={() => markCard("know")}>Know this</Button>
+            <Button variant="outline" onClick={() => markCard("again")}>Again</Button>
+            <Button variant="secondary" onClick={() => markCard("hard")}>Hard</Button>
+            <Button onClick={() => markCard("know")}>Know</Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Progress per subject</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {subjectProgress.map(([subject, stats]) => {
+            const completed = stats.know + stats.hard + stats.again;
+            const subjectValue = stats.total > 0 ? (completed / stats.total) * 100 : 0;
+            return (
+              <div key={subject} className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span className="font-medium">{subject}</span>
+                  <span className="text-muted-foreground">{completed} / {stats.total} reviewed</span>
+                </div>
+                <Progress value={subjectValue} />
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span>Know: {stats.know}</span>
+                  <span>Hard: {stats.hard}</span>
+                  <span>Again: {stats.again}</span>
+                </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
     </div>

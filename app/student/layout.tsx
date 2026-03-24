@@ -6,6 +6,6 @@ export default async function StudentLayout({
 }: {
   children: ReactNode;
 }) {
-  await requireRole(["student", "admin", "instructor"]);
+  await requireRole(["student"]);
   return children;
 }

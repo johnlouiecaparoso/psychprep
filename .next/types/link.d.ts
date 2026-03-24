@@ -31,21 +31,28 @@ declare namespace __next_route_internal_types__ {
   type StaticRoutes = 
     | `/`
     | `/admin`
-    | `/dashboard`
     | `/api/imports`
-    | `/forgot-password`
+    | `/api/mock-exams/submit`
+    | `/api/review-materials`
+    | `/dashboard`
     | `/instructor`
-    | `/instructor/upload`
     | `/instructor/question-bank`
+    | `/instructor/upload`
+    | `/instructor/reviewers`
+    | `/forgot-password`
     | `/login`
+    | `/profile`
     | `/register`
+    | `/settings`
     | `/student`
     | `/student/flashcards`
-    | `/profile`
-    | `/settings`
+    | `/student/mock-exams`
+    | `/student/reviewers`
+    | `/student/quiz`
   type DynamicRoutes<T extends string = string> = 
-    | `/student/results/${SafeSlug<T>}`
+    | `/api/review-materials/${SafeSlug<T>}`
     | `/student/mock-exams/${SafeSlug<T>}`
+    | `/student/results/${SafeSlug<T>}`
 
   type RouteImpl<T> = 
     | StaticRoutes

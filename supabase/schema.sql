@@ -106,7 +106,7 @@ begin
     new.id,
     coalesce(new.raw_user_meta_data ->> 'full_name', ''),
     new.email,
-    coalesce((new.raw_user_meta_data ->> 'role')::public.user_role, 'student')
+    'student'
   );
   return new;
 end;
@@ -266,3 +266,23 @@ with check (
     where profiles.id = auth.uid() and profiles.role in ('admin', 'instructor')
   )
 );
+
+
+create or replace function public.prevent_profile_role_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() = old.id and new.role <> old.role then
+    raise exception 'Role changes are not allowed from the client.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists prevent_profile_role_change on public.profiles;
+create trigger prevent_profile_role_change
+before update on public.profiles
+for each row execute procedure public.prevent_profile_role_change();

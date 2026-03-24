@@ -3,6 +3,28 @@ import type { createClient } from "@/lib/supabase/server";
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
+function getBaseFileName(fileName: string) {
+  return fileName.replace(/\.[^.]+$/, "").trim() || "Mock Exam";
+}
+
+function buildMockExamTitle({
+  fileName,
+  subject,
+  hasMultipleSubjects,
+  uploadId
+}: {
+  fileName: string;
+  subject: string;
+  hasMultipleSubjects: boolean;
+  uploadId: string;
+}) {
+  const shortUploadId = uploadId.slice(0, 8);
+  const base = getBaseFileName(fileName);
+  return hasMultipleSubjects
+    ? `${base} - ${subject} [${shortUploadId}]`
+    : `${base} [${shortUploadId}]`;
+}
+
 export async function persistUploadBatch({
   supabase,
   uploadedBy,
@@ -48,10 +70,23 @@ export async function persistUploadBatch({
       }
     }
 
+    const subjectCache = new Map<string, string>();
+    const topicCache = new Map<string, string>();
+    const mockExamCache = new Map<string, string>();
+    const hasMultipleSubjects = new Set(validRows.map((row) => row.subject)).size > 1;
+
     for (const row of validRows) {
-      const subjectId = await upsertSubject(supabase, row.subject);
-      const topicId = await upsertTopic(supabase, subjectId, row.topic);
-      const mockExamId = await upsertMockExam(supabase, subjectId, `${row.subject} Review Set`);
+      const subjectId = await upsertSubject(supabase, row.subject, subjectCache);
+      const topicId = await upsertTopic(supabase, subjectId, row.topic, topicCache);
+      const mockExamId = await createMockExamForUpload({
+        supabase,
+        subjectId,
+        fileName,
+        subject: row.subject,
+        uploadId: upload.id,
+        hasMultipleSubjects,
+        mockExamCache
+      });
 
       const { data: question, error: questionError } = await supabase
         .from("exam_questions")
@@ -90,10 +125,15 @@ export async function persistUploadBatch({
   }
 }
 
-async function upsertSubject(supabase: ServerClient, name: string) {
+async function upsertSubject(supabase: ServerClient, name: string, cache: Map<string, string>) {
+  if (cache.has(name)) {
+    return cache.get(name) as string;
+  }
+
   const { data: existing } = await supabase.from("subjects").select("id").eq("name", name).maybeSingle();
 
   if (existing) {
+    cache.set(name, existing.id as string);
     return existing.id as string;
   }
 
@@ -103,10 +143,22 @@ async function upsertSubject(supabase: ServerClient, name: string) {
     throw error ?? new Error("Unable to upsert subject.");
   }
 
+  cache.set(name, data.id as string);
   return data.id as string;
 }
 
-async function upsertTopic(supabase: ServerClient, subjectId: string, name: string) {
+async function upsertTopic(
+  supabase: ServerClient,
+  subjectId: string,
+  name: string,
+  cache: Map<string, string>
+) {
+  const key = `${subjectId}:${name}`;
+
+  if (cache.has(key)) {
+    return cache.get(key) as string;
+  }
+
   const { data: existing } = await supabase
     .from("topics")
     .select("id")
@@ -115,6 +167,7 @@ async function upsertTopic(supabase: ServerClient, subjectId: string, name: stri
     .maybeSingle();
 
   if (existing) {
+    cache.set(key, existing.id as string);
     return existing.id as string;
   }
 
@@ -128,20 +181,39 @@ async function upsertTopic(supabase: ServerClient, subjectId: string, name: stri
     throw error ?? new Error("Unable to upsert topic.");
   }
 
+  cache.set(key, data.id as string);
   return data.id as string;
 }
 
-async function upsertMockExam(supabase: ServerClient, subjectId: string, title: string) {
-  const { data: existing } = await supabase
-    .from("mock_exams")
-    .select("id")
-    .eq("subject_id", subjectId)
-    .eq("title", title)
-    .maybeSingle();
+async function createMockExamForUpload({
+  supabase,
+  subjectId,
+  fileName,
+  subject,
+  uploadId,
+  hasMultipleSubjects,
+  mockExamCache
+}: {
+  supabase: ServerClient;
+  subjectId: string;
+  fileName: string;
+  subject: string;
+  uploadId: string;
+  hasMultipleSubjects: boolean;
+  mockExamCache: Map<string, string>;
+}) {
+  const key = `${subjectId}:${uploadId}`;
 
-  if (existing) {
-    return existing.id as string;
+  if (mockExamCache.has(key)) {
+    return mockExamCache.get(key) as string;
   }
+
+  const title = buildMockExamTitle({
+    fileName,
+    subject,
+    hasMultipleSubjects,
+    uploadId
+  });
 
   const { data, error } = await supabase
     .from("mock_exams")
@@ -150,8 +222,9 @@ async function upsertMockExam(supabase: ServerClient, subjectId: string, title: 
     .single();
 
   if (error || !data) {
-    throw error ?? new Error("Unable to upsert mock exam.");
+    throw error ?? new Error("Unable to create mock exam for upload.");
   }
 
+  mockExamCache.set(key, data.id as string);
   return data.id as string;
 }

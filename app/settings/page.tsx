@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
+import type { Role } from "@/lib/types";
 
 export default function SettingsPage() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const { user, userRole, loading } = useAuth();
   const [formData, setFormData] = useState({
     email_notifications: true,
     push_notifications: false,
@@ -21,17 +20,13 @@ export default function SettingsPage() {
     theme: "light"
   });
   const supabase = createClient();
-
-  useEffect(() => {
-    setLoading(false);
-  }, []);
+  const shellRole: Role = (userRole as Role) || "student";
 
   const handleSave = async () => {
     try {
-      // Save settings to user metadata
       await supabase.auth.updateUser({
-        data: { 
-          preferences: formData 
+        data: {
+          preferences: formData
         }
       });
       alert("Settings saved successfully!");
@@ -43,8 +38,8 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <AppShell role="student" title="Settings" description="Loading your settings...">
-        <div className="flex items-center justify-center h-64">
+      <AppShell role={shellRole} title="Settings" description="Loading your settings...">
+        <div className="flex h-64 items-center justify-center">
           <p>Loading...</p>
         </div>
       </AppShell>
@@ -53,8 +48,8 @@ export default function SettingsPage() {
 
   if (!user) {
     return (
-      <AppShell role="student" title="Settings" description="Please sign in to access your settings">
-        <div className="flex items-center justify-center h-64">
+      <AppShell role={shellRole} title="Settings" description="Please sign in to access your settings">
+        <div className="flex h-64 items-center justify-center">
           <p>Please sign in to access your settings</p>
         </div>
       </AppShell>
@@ -62,7 +57,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <AppShell role="student" title="Settings" description="Manage your account preferences and notifications">
+    <AppShell role={shellRole} title="Settings" description="Manage your account preferences and notifications">
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -72,65 +67,30 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="email_notifications">Email Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receive exam reminders and updates via email
-                </p>
+                <p className="text-sm text-muted-foreground">Receive exam reminders and updates via email</p>
               </div>
-              <Switch
-                id="email_notifications"
-                checked={formData.email_notifications}
-                onCheckedChange={(checked) => 
-                  setFormData({ ...formData, email_notifications: checked })
-                }
-              />
+              <Switch id="email_notifications" checked={formData.email_notifications} onCheckedChange={(checked) => setFormData({ ...formData, email_notifications: checked })} />
             </div>
-            
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="push_notifications">Push Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receive browser push notifications for urgent updates
-                </p>
+                <p className="text-sm text-muted-foreground">Receive browser push notifications for urgent updates</p>
               </div>
-              <Switch
-                id="push_notifications"
-                checked={formData.push_notifications}
-                onCheckedChange={(checked) => 
-                  setFormData({ ...formData, push_notifications: checked })
-                }
-              />
+              <Switch id="push_notifications" checked={formData.push_notifications} onCheckedChange={(checked) => setFormData({ ...formData, push_notifications: checked })} />
             </div>
-            
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="email_reminders">Email Reminders</Label>
-                <p className="text-sm text-muted-foreground">
-                  Daily study reminders and progress updates
-                </p>
+                <p className="text-sm text-muted-foreground">Daily study reminders and progress updates</p>
               </div>
-              <Switch
-                id="email_reminders"
-                checked={formData.email_reminders}
-                onCheckedChange={(checked) => 
-                  setFormData({ ...formData, email_reminders: checked })
-                }
-              />
+              <Switch id="email_reminders" checked={formData.email_reminders} onCheckedChange={(checked) => setFormData({ ...formData, email_reminders: checked })} />
             </div>
-            
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="study_reminders">Study Reminders</Label>
-                <p className="text-sm text-muted-foreground">
-                  Remind me to study and practice regularly
-                </p>
+                <p className="text-sm text-muted-foreground">Remind me to study and practice regularly</p>
               </div>
-              <Switch
-                id="study_reminders"
-                checked={formData.study_reminders}
-                onCheckedChange={(checked) => 
-                  setFormData({ ...formData, study_reminders: checked })
-                }
-              />
+              <Switch id="study_reminders" checked={formData.study_reminders} onCheckedChange={(checked) => setFormData({ ...formData, study_reminders: checked })} />
             </div>
           </CardContent>
         </Card>
@@ -145,9 +105,7 @@ export default function SettingsPage() {
               <select
                 id="theme"
                 value={formData.theme}
-                onChange={(e) => 
-                  setFormData({ ...formData, theme: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="light">Light</option>
@@ -155,26 +113,18 @@ export default function SettingsPage() {
                 <option value="system">System</option>
               </select>
             </div>
-            
             <div className="space-y-2">
               <Label>Account Actions</Label>
               <div className="space-y-2">
-                <Button variant="outline" className="w-full">
-                  Export My Data
-                </Button>
-                <Button variant="destructive" className="w-full">
-                  Delete Account
-                </Button>
+                <Button variant="outline" className="w-full">Export My Data</Button>
+                <Button variant="destructive" className="w-full">Delete Account</Button>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-      
       <div className="mt-6">
-        <Button onClick={handleSave} size="lg">
-          Save Settings
-        </Button>
+        <Button onClick={handleSave} size="lg">Save Settings</Button>
       </div>
     </AppShell>
   );

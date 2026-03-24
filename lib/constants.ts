@@ -16,3 +16,9 @@ export const IMPORT_HEADERS = [
   "Subject",
   "Topic"
 ] as const;
+
+export const ROLE_LABELS = {
+  admin: "Admin",
+  instructor: "Instructor",
+  student: "Student"
+} as const;

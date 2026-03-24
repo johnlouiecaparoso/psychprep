@@ -1,9 +1,13 @@
 import { AppShell } from "@/components/app-shell";
-import { QuestionBankTable } from "@/components/tables/question-bank-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { sampleQuestions } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/server";
+import { getQuestionBankRows } from "@/lib/supabase/review-service";
+import { QuestionBankTable } from "@/components/tables/question-bank-table";
 
-export default function QuestionBankPage() {
+export default async function QuestionBankPage() {
+  const supabase = await createClient();
+  const questions = await getQuestionBankRows(supabase);
+
   return (
     <AppShell
       role="instructor"
@@ -15,7 +19,11 @@ export default function QuestionBankPage() {
           <CardTitle>Question bank browser</CardTitle>
         </CardHeader>
         <CardContent>
-          <QuestionBankTable data={sampleQuestions} />
+          {questions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No imported questions yet. Upload a CSV to populate the bank.</p>
+          ) : (
+            <QuestionBankTable data={questions} />
+          )}
         </CardContent>
       </Card>
     </AppShell>

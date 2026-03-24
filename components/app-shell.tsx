@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import Link from "next/link";
-import { BrainCircuit, FileSpreadsheet, LayoutDashboard, Layers3, UserRound } from "lucide-react";
+import { BookOpenText, BrainCircuit, FileSpreadsheet, LayoutDashboard, Layers3, ShieldCheck, UserRound } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -8,19 +8,23 @@ import { UserMenu } from "@/components/auth/user-menu";
 
 const navByRole: Record<Role, { href: string; label: string; icon: ComponentType<{ className?: string }> }[]> = {
   admin: [
-    { href: "/admin" as const, label: "Dashboard", icon: LayoutDashboard },
-    { href: "/instructor/upload" as const, label: "Imports", icon: FileSpreadsheet },
-    { href: "/student/flashcards" as const, label: "Learning", icon: Layers3 }
+    { href: "/admin" as const, label: "Dashboard", icon: ShieldCheck },
+    { href: "/instructor/upload" as const, label: "Question Imports", icon: FileSpreadsheet },
+    { href: "/instructor/question-bank" as const, label: "Question Bank", icon: Layers3 },
+    { href: "/instructor/reviewers" as const, label: "Reviewer Library", icon: BookOpenText }
   ],
   instructor: [
     { href: "/instructor" as const, label: "Dashboard", icon: LayoutDashboard },
     { href: "/instructor/upload" as const, label: "Upload CSV", icon: FileSpreadsheet },
-    { href: "/instructor/question-bank" as const, label: "Question Bank", icon: Layers3 }
+    { href: "/instructor/question-bank" as const, label: "Question Bank", icon: Layers3 },
+    { href: "/instructor/reviewers" as const, label: "Reviewer PDFs", icon: BookOpenText }
   ],
   student: [
     { href: "/student" as const, label: "Dashboard", icon: LayoutDashboard },
-    { href: "/student/mock-exams/exam-001" as const, label: "Mock Exam", icon: BrainCircuit },
-    { href: "/student/flashcards" as const, label: "Flashcards", icon: Layers3 }
+    { href: "/student/mock-exams" as const, label: "Mock Exams", icon: BrainCircuit },
+    { href: "/student/quiz" as const, label: "Quick Quiz", icon: Layers3 },
+    { href: "/student/flashcards" as const, label: "Flashcards", icon: Layers3 },
+    { href: "/student/reviewers" as const, label: "Reviewers", icon: BookOpenText }
   ]
 };
 
@@ -69,9 +73,11 @@ export function AppShell({
             <div className="mt-8 rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
               <div className="mb-2 flex items-center gap-2 font-semibold">
                 <UserRound className="h-4 w-4" />
-                Review smarter
+                {role === "student" ? "Study with structure" : "Manage learning content"}
               </div>
-              Focus weak topics, run timed drills, and keep every upload clean with strict validation.
+              {role === "student"
+                ? "Use quizzes, mock exams, flashcards, and reviewer PDFs together to strengthen weak topics."
+                : "Keep exam imports strict, reviewer PDFs organized, and analytics clear for every learner."}
             </div>
           </aside>
           <main className="space-y-6">

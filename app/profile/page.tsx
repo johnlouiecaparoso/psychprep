@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
+import type { Role } from "@/lib/types";
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -21,12 +21,16 @@ export default function ProfilePage() {
     email: ""
   });
   const supabase = createClient();
+  const shellRole: Role = (userRole as Role) || "student";
 
   useEffect(() => {
-    if (user) {
-      fetchProfile();
+    if (!authLoading && user) {
+      void fetchProfile();
     }
-  }, [user]);
+    if (!authLoading && !user) {
+      setLoading(false);
+    }
+  }, [user, authLoading]);
 
   const fetchProfile = async () => {
     try {
@@ -37,7 +41,7 @@ export default function ProfilePage() {
         .single();
 
       if (error) throw error;
-      
+
       setProfile(data);
       setFormData({
         full_name: data.full_name || "",
@@ -62,22 +66,21 @@ export default function ProfilePage() {
 
       if (error) throw error;
 
-      // Update user metadata
       await supabase.auth.updateUser({
         data: { full_name: formData.full_name }
       });
 
       setEditing(false);
-      fetchProfile();
+      void fetchProfile();
     } catch (error) {
       console.error("Error updating profile:", error);
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
-      <AppShell role="student" title="Profile" description="Loading your profile...">
-        <div className="flex items-center justify-center h-64">
+      <AppShell role={shellRole} title="Profile" description="Loading your profile...">
+        <div className="flex h-64 items-center justify-center">
           <p>Loading...</p>
         </div>
       </AppShell>
@@ -86,8 +89,8 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <AppShell role="student" title="Profile" description="Please sign in to view your profile">
-        <div className="flex items-center justify-center h-64">
+      <AppShell role={shellRole} title="Profile" description="Please sign in to view your profile">
+        <div className="flex h-64 items-center justify-center">
           <p>Please sign in to view your profile</p>
         </div>
       </AppShell>
@@ -95,7 +98,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <AppShell role="student" title="Profile" description="Manage your account settings and preferences">
+    <AppShell role={shellRole} title="Profile" description="Manage your account settings and preferences">
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -140,13 +143,11 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Role</p>
-                  <Badge variant="secondary">{profile?.role}</Badge>
+                  <Badge>{profile?.role}</Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Member Since</p>
-                  <p className="font-medium">
-                    {new Date(profile?.created_at).toLocaleDateString()}
-                  </p>
+                  <p className="font-medium">{profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : "-"}</p>
                 </div>
                 <Button onClick={() => setEditing(true)}>Edit Profile</Button>
               </div>
@@ -156,24 +157,16 @@ export default function ProfilePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Account Statistics</CardTitle>
+            <CardTitle>Account Notes</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-sm text-muted-foreground">Total Exams Taken</p>
-              <p className="text-2xl font-bold">0</p>
+              <p className="text-sm text-muted-foreground">Portal Access</p>
+              <p className="text-2xl font-bold capitalize">{shellRole}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Average Score</p>
-              <p className="text-2xl font-bold">0%</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Study Streak</p>
-              <p className="text-2xl font-bold">0 days</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Study Time</p>
-              <p className="text-2xl font-bold">0 min</p>
+              <p className="text-sm text-muted-foreground">Role restriction</p>
+              <p className="text-sm">Your dashboard and content management access are limited by your assigned role in Supabase.</p>
             </div>
           </CardContent>
         </Card>
