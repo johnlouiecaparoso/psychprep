@@ -1,0 +1,25 @@
+{
+  "name": "PsychBoard",
+  "short_name": "PsychBoard",
+  "description": "Psychology board exam review platform with mock exams, flashcards, reviewers, and analytics.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fdfaf5",
+  "theme_color": "#21a692",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,7 +1,6 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowRight, BrainCircuit, ChartColumn, FileSpreadsheet } from "lucide-react";
+import { PwaInstallButton } from "@/components/pwa-install-button";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -48,20 +47,21 @@ export default function LandingPage() {
               <Link href="/register" className={buttonVariants({ variant: "outline" })}>
                 Create account
               </Link>
+              <PwaInstallButton className="gap-2" />
             </div>
           </div>
-          <Card className="bg-gradient-to-br from-emerald-50 via-white to-amber-50">
+          <Card className="bg-gradient-to-br from-emerald-50 via-white to-amber-50 dark:from-emerald-950/30 dark:via-card dark:to-amber-900/20">
             <CardContent className="space-y-5 p-8">
               <div>
                 <p className="text-sm text-muted-foreground">Readiness snapshot</p>
                 <p className="mt-2 text-5xl font-bold">82%</p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl bg-white p-4">
+                <div className="rounded-2xl bg-white p-4 dark:bg-card">
                   <p className="text-sm text-muted-foreground">Weak topics</p>
                   <p className="mt-2 text-2xl font-bold">4</p>
                 </div>
-                <div className="rounded-2xl bg-white p-4">
+                <div className="rounded-2xl bg-white p-4 dark:bg-card">
                   <p className="text-sm text-muted-foreground">Upload accuracy</p>
                   <p className="mt-2 text-2xl font-bold">91%</p>
                 </div>
