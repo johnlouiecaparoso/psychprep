@@ -3,6 +3,15 @@ export const APP_NAME = "PsychBoard";
 export const ROLES = ["admin", "instructor", "student"] as const;
 export const DIFFICULTIES = ["easy", "medium", "hard"] as const;
 export const CHOICE_KEYS = ["A", "B", "C", "D"] as const;
+export const THEME_OPTIONS = ["light", "dark", "system"] as const;
+
+export const DEFAULT_USER_PREFERENCES = {
+  email_notifications: true,
+  push_notifications: false,
+  email_reminders: true,
+  study_reminders: true,
+  theme: "system"
+} as const;
 
 export const IMPORT_HEADERS = [
   "Question",

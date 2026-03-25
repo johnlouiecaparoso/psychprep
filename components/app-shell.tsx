@@ -1,32 +1,100 @@
-import type { ComponentType, ReactNode } from "react";
+"use client";
+
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
-import { BookOpenText, BrainCircuit, FileSpreadsheet, LayoutDashboard, Layers3, ShieldCheck, UserRound } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  BookOpenText,
+  BrainCircuit,
+  FileSpreadsheet,
+  LayoutDashboard,
+  Layers3,
+  LogOut,
+  Menu,
+  Settings,
+  ShieldCheck,
+  User,
+  UserRound,
+  X
+} from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
+import { createClient } from "@/lib/supabase/client";
 
-const navByRole: Record<Role, { href: string; label: string; icon: ComponentType<{ className?: string }> }[]> = {
+type NavItem = {
+  href: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+};
+
+const navByRole: Record<Role, NavItem[]> = {
   admin: [
-    { href: "/admin" as const, label: "Dashboard", icon: ShieldCheck },
-    { href: "/instructor/upload" as const, label: "Question Imports", icon: FileSpreadsheet },
-    { href: "/instructor/question-bank" as const, label: "Question Bank", icon: Layers3 },
-    { href: "/instructor/reviewers" as const, label: "Reviewer Library", icon: BookOpenText }
+    { href: "/admin", label: "Dashboard", icon: ShieldCheck },
+    { href: "/instructor/upload", label: "Question Imports", icon: FileSpreadsheet },
+    { href: "/instructor/question-bank", label: "Question Bank", icon: Layers3 },
+    { href: "/instructor/reviewers", label: "Reviewer Library", icon: BookOpenText },
+    { href: "/profile", label: "Profile", icon: UserRound }
   ],
   instructor: [
-    { href: "/instructor" as const, label: "Dashboard", icon: LayoutDashboard },
-    { href: "/instructor/upload" as const, label: "Upload CSV", icon: FileSpreadsheet },
-    { href: "/instructor/question-bank" as const, label: "Question Bank", icon: Layers3 },
-    { href: "/instructor/reviewers" as const, label: "Reviewer PDFs", icon: BookOpenText }
+    { href: "/instructor", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/instructor/upload", label: "Upload CSV", icon: FileSpreadsheet },
+    { href: "/instructor/question-bank", label: "Question Bank", icon: Layers3 },
+    { href: "/instructor/reviewers", label: "Reviewer PDFs", icon: BookOpenText },
+    { href: "/profile", label: "Profile", icon: UserRound }
   ],
   student: [
-    { href: "/student" as const, label: "Dashboard", icon: LayoutDashboard },
-    { href: "/student/mock-exams" as const, label: "Mock Exams", icon: BrainCircuit },
-    { href: "/student/quiz" as const, label: "Quick Quiz", icon: Layers3 },
-    { href: "/student/flashcards" as const, label: "Flashcards", icon: Layers3 },
-    { href: "/student/reviewers" as const, label: "Reviewers", icon: BookOpenText }
+    { href: "/student", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/student/mock-exams", label: "Mock Exams", icon: BrainCircuit },
+    { href: "/student/quiz", label: "Quick Quiz", icon: Layers3 },
+    { href: "/student/flashcards", label: "Flashcards", icon: Layers3 },
+    { href: "/student/reviewers", label: "Reviewers", icon: BookOpenText }
   ]
 };
+
+function StudentSidebarActions() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+
+  async function handleLogout() {
+    try {
+      await supabase.auth.signOut();
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  }
+
+  const actionClassName = (href: string) =>
+    cn(
+      "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
+      pathname === href ? "bg-primary text-white shadow-sm" : "text-slate-600 hover:bg-muted hover:text-slate-950"
+    );
+
+  return (
+    <div className="mt-4 space-y-2 border-t pt-4">
+      <Link href="/profile" className={actionClassName("/profile")}>
+        <User className="h-4 w-4" />
+        Profile
+      </Link>
+      <Link href="/settings" className={actionClassName("/settings")}>
+        <Settings className="h-4 w-4" />
+        Settings
+      </Link>
+      <button
+        type="button"
+        onClick={() => void handleLogout()}
+        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-600 transition hover:bg-muted hover:text-slate-950"
+      >
+        <LogOut className="h-4 w-4" />
+        Logout
+      </button>
+    </div>
+  );
+}
 
 export function AppShell({
   role,
@@ -39,61 +107,110 @@ export function AppShell({
   description: string;
   children: ReactNode;
 }) {
+  const pathname = usePathname();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
+
+  const sidebar = (
+    <aside
+      className={cn(
+        "max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[28px] border bg-white/95 p-5 shadow-soft backdrop-blur",
+        "lg:sticky lg:top-6 lg:block",
+        isSidebarOpen ? "block" : "hidden lg:block"
+      )}
+    >
+      <div className="mb-8 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+            <BrainCircuit className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-lg font-bold">{APP_NAME}</p>
+            <p className="text-sm text-muted-foreground capitalize">{role} portal</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsSidebarOpen(false)}
+          className="rounded-xl border p-2 text-slate-600 lg:hidden"
+          aria-label="Close dashboard menu"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <nav className="space-y-2">
+        {navByRole[role].map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href || (item.href !== "/profile" && pathname.startsWith(`${item.href}/`));
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href as any}
+              className={cn(
+                "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
+                isActive
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-slate-600 hover:bg-muted hover:text-slate-950"
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+      {role === "student" ? <StudentSidebarActions /> : null}
+      <div className="mt-8 rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
+        <div className="mb-2 flex items-center gap-2 font-semibold">
+          <UserRound className="h-4 w-4" />
+          {role === "student" ? "Study with structure" : "Manage learning content"}
+        </div>
+        {role === "student"
+          ? "Use quizzes, mock exams, flashcards, and reviewer PDFs together to strengthen weak topics."
+          : "Keep exam imports strict, reviewer PDFs organized, and analytics clear for every learner."}
+      </div>
+    </aside>
+  );
+
   return (
     <div className="min-h-screen">
-      <div className="container-shell py-6">
+      <div className="container-shell py-4 sm:py-6">
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-          <aside className="rounded-[28px] border bg-white/90 p-5 shadow-soft backdrop-blur">
-            <div className="mb-8 flex items-center gap-3">
-              <div className="rounded-2xl bg-primary/10 p-3 text-primary">
-                <BrainCircuit className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-lg font-bold">{APP_NAME}</p>
-                <p className="text-sm text-muted-foreground capitalize">{role} portal</p>
-              </div>
-            </div>
-            <nav className="space-y-2">
-              {navByRole[role].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href as any}
-                    className={cn(
-                      "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-muted hover:text-slate-950"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-            <div className="mt-8 rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
-              <div className="mb-2 flex items-center gap-2 font-semibold">
-                <UserRound className="h-4 w-4" />
-                {role === "student" ? "Study with structure" : "Manage learning content"}
-              </div>
-              {role === "student"
-                ? "Use quizzes, mock exams, flashcards, and reviewer PDFs together to strengthen weak topics."
-                : "Keep exam imports strict, reviewer PDFs organized, and analytics clear for every learner."}
-            </div>
-          </aside>
+          <div className="hidden lg:block">{sidebar}</div>
           <main className="space-y-6">
-            <div className="rounded-[28px] border bg-white/90 p-6 shadow-soft backdrop-blur">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-                  <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{description}</p>
+            <div className="rounded-[28px] border bg-white/90 p-5 shadow-soft backdrop-blur sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsSidebarOpen(true)}
+                    className="rounded-2xl border p-3 text-slate-700 lg:hidden"
+                    aria-label="Open dashboard menu"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </button>
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+                    <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{description}</p>
+                  </div>
                 </div>
-                <UserMenu />
+                <UserMenu role={role} />
               </div>
             </div>
             {children}
           </main>
         </div>
       </div>
+
+      {isSidebarOpen ? (
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/40 lg:hidden">
+          <div className="min-h-full max-w-[300px] p-4">{sidebar}</div>
+        </div>
+      ) : null}
     </div>
   );
 }

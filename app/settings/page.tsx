@@ -1,38 +1,81 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/lib/auth-context";
-import { createClient } from "@/lib/supabase/client";
-import type { Role } from "@/lib/types";
+import type { Role, ThemePreference, UserPreferences } from "@/lib/types";
+import { defaultUserPreferences } from "@/lib/types";
+import { applyTheme, normalizePreferences } from "@/lib/preferences";
 
 export default function SettingsPage() {
-  const { user, userRole, loading } = useAuth();
-  const [formData, setFormData] = useState({
-    email_notifications: true,
-    push_notifications: false,
-    email_reminders: true,
-    study_reminders: true,
-    theme: "light"
-  });
-  const supabase = createClient();
+  const { user, userRole, preferences, loading, updatePreferences } = useAuth();
+  const [formData, setFormData] = useState<UserPreferences>(defaultUserPreferences);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const shellRole: Role = (userRole as Role) || "student";
+
+  useEffect(() => {
+    setFormData(normalizePreferences(preferences));
+  }, [preferences]);
+
+  useEffect(() => {
+    applyTheme(formData.theme);
+  }, [formData.theme]);
+
+  const supportsNotifications = useMemo(
+    () => typeof window !== "undefined" && "Notification" in window,
+    []
+  );
+
+  const setField = <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
 
   const handleSave = async () => {
     try {
-      await supabase.auth.updateUser({
-        data: {
-          preferences: formData
+      setSaving(true);
+      setMessage(null);
+
+      let nextPreferences = { ...formData };
+      let feedbackMessage: string | null = null;
+      let feedbackTone: "success" | "error" = "success";
+
+      if (nextPreferences.push_notifications) {
+        if (!supportsNotifications) {
+          nextPreferences = { ...nextPreferences, push_notifications: false };
+          setField("push_notifications", false);
+          feedbackTone = "error";
+          feedbackMessage = "This browser does not support push notifications. Other settings were still saved.";
+        } else {
+          const permission = await Notification.requestPermission();
+
+          if (permission !== "granted") {
+            nextPreferences = { ...nextPreferences, push_notifications: false };
+            setField("push_notifications", false);
+            feedbackTone = "error";
+            feedbackMessage = "Notification permission was not granted, so push notifications stayed off.";
+          } else {
+            new Notification("PsychBoard notifications enabled", {
+              body: "You will now receive browser study reminders on this device when supported."
+            });
+          }
         }
-      });
-      alert("Settings saved successfully!");
+      }
+
+      await updatePreferences(nextPreferences);
+      setMessageTone(feedbackTone);
+      setMessage(feedbackMessage ?? "Settings saved successfully.");
     } catch (error) {
       console.error("Error saving settings:", error);
-      alert("Failed to save settings");
+      setMessageTone("error");
+      setMessage(error instanceof Error ? error.message : "Failed to save settings.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -57,47 +100,63 @@ export default function SettingsPage() {
   }
 
   return (
-    <AppShell role={shellRole} title="Settings" description="Manage your account preferences and notifications">
+    <AppShell role={shellRole} title="Settings" description="Manage your account preferences, theme behavior, and notifications.">
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Notifications</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <Label htmlFor="email_notifications">Email Notifications</Label>
-                <p className="text-sm text-muted-foreground">Receive exam reminders and updates via email</p>
+                <p className="text-sm text-muted-foreground">Save your preference for emailed updates and reminder messages.</p>
               </div>
-              <Switch id="email_notifications" checked={formData.email_notifications} onCheckedChange={(checked) => setFormData({ ...formData, email_notifications: checked })} />
+              <Switch
+                id="email_notifications"
+                checked={formData.email_notifications}
+                onCheckedChange={(checked) => setField("email_notifications", checked)}
+              />
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <Label htmlFor="push_notifications">Push Notifications</Label>
-                <p className="text-sm text-muted-foreground">Receive browser push notifications for urgent updates</p>
+                <Label htmlFor="push_notifications">Browser Notifications</Label>
+                <p className="text-sm text-muted-foreground">Enable device notifications in supported browsers after permission is granted.</p>
               </div>
-              <Switch id="push_notifications" checked={formData.push_notifications} onCheckedChange={(checked) => setFormData({ ...formData, push_notifications: checked })} />
+              <Switch
+                id="push_notifications"
+                checked={formData.push_notifications}
+                onCheckedChange={(checked) => setField("push_notifications", checked)}
+              />
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <Label htmlFor="email_reminders">Email Reminders</Label>
-                <p className="text-sm text-muted-foreground">Daily study reminders and progress updates</p>
+                <p className="text-sm text-muted-foreground">Keep daily study reminders included in your saved notification preferences.</p>
               </div>
-              <Switch id="email_reminders" checked={formData.email_reminders} onCheckedChange={(checked) => setFormData({ ...formData, email_reminders: checked })} />
+              <Switch
+                id="email_reminders"
+                checked={formData.email_reminders}
+                onCheckedChange={(checked) => setField("email_reminders", checked)}
+              />
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <Label htmlFor="study_reminders">Study Reminders</Label>
-                <p className="text-sm text-muted-foreground">Remind me to study and practice regularly</p>
+                <p className="text-sm text-muted-foreground">Use reminder preference data for future study reminder features and nudges.</p>
               </div>
-              <Switch id="study_reminders" checked={formData.study_reminders} onCheckedChange={(checked) => setFormData({ ...formData, study_reminders: checked })} />
+              <Switch
+                id="study_reminders"
+                checked={formData.study_reminders}
+                onCheckedChange={(checked) => setField("study_reminders", checked)}
+              />
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Preferences</CardTitle>
+            <CardTitle>Appearance</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -105,26 +164,31 @@ export default function SettingsPage() {
               <select
                 id="theme"
                 value={formData.theme}
-                onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                onChange={(event) => setField("theme", event.target.value as ThemePreference)}
+                className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
                 <option value="system">System</option>
               </select>
+              <p className="mt-2 text-sm text-muted-foreground">
+                System follows your device automatically and switches between dark and light mode when your OS changes.
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label>Account Actions</Label>
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full">Export My Data</Button>
-                <Button variant="destructive" className="w-full">Delete Account</Button>
-              </div>
+            <div className="rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">
+              Your theme preference now previews immediately and is saved to your account when you press Save Settings.
             </div>
           </CardContent>
         </Card>
       </div>
-      <div className="mt-6">
-        <Button onClick={handleSave} size="lg">Save Settings</Button>
+
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        <Button onClick={handleSave} size="lg" disabled={saving}>
+          {saving ? "Saving..." : "Save Settings"}
+        </Button>
+        {message ? (
+          <p className={messageTone === "success" ? "text-sm text-emerald-600" : "text-sm text-rose-600"}>{message}</p>
+        ) : null}
       </div>
     </AppShell>
   );

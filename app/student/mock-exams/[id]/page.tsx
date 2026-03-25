@@ -25,7 +25,7 @@ export default async function StudentMockExamPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ shuffle?: string; seed?: string; mode?: string; limit?: string }>;
+  searchParams: Promise<{ shuffle?: string; seed?: string; mode?: string; limit?: string; duration?: string }>;
 }) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
@@ -43,25 +43,36 @@ export default async function StudentMockExamPage({
   const safeLimit = Number.isFinite(requestedLimit)
     ? Math.min(Math.max(requestedLimit, 1), baseQuestions.length)
     : baseQuestions.length;
+  const requestedDurationMinutes = Number.parseInt(resolvedSearchParams.duration ?? "", 10);
+  const fallbackDurationMinutes = mode === "quiz" ? Math.max(safeLimit * 2, 10) : 45;
+  const durationMinutes = Number.isFinite(requestedDurationMinutes)
+    ? Math.min(Math.max(requestedDurationMinutes, 5), 240)
+    : fallbackDurationMinutes;
 
   let preparedQuestions: ReviewQuestion[] = shouldShuffle ? seededShuffle(baseQuestions, seed) : baseQuestions;
   preparedQuestions = mode === "quiz" ? preparedQuestions.slice(0, safeLimit) : preparedQuestions;
 
   const topicCount = new Set(preparedQuestions.map((question) => question.topic)).size;
-  const sessionKey = `${id}:${mode}:${safeLimit}:${shouldShuffle ? `shuffle:${seed}` : "ordered"}`;
+  const sessionKey = `${id}:${mode}:${safeLimit}:${durationMinutes}:${shouldShuffle ? `shuffle:${seed}` : "ordered"}`;
 
   return (
     <AppShell
       role="student"
       title={mode === "quiz" ? "Quick quiz" : "Timed mock exam"}
-      description={mode === "quiz" ? "Answer a shorter targeted set and tune the item limit for active recall practice." : "Take one question at a time, use the palette to jump, and submit when you're ready."}
+      description={mode === "quiz" ? "Answer a shorter targeted set, adjust your own timer, and keep the session light enough for active recall." : "Take one question at a time, choose a timer that fits your pace, and submit when you're ready."}
     >
       <Card>
         <CardContent className="p-6 text-sm text-muted-foreground">
-          Subject: {preparedQuestions[0].subject} | Topic coverage: {topicCount} | Items: {preparedQuestions.length} | Order: {shouldShuffle ? "Shuffled" : "Standard"}
+          Subject: {preparedQuestions[0].subject} | Topic coverage: {topicCount} | Items: {preparedQuestions.length} | Time: {durationMinutes} min | Order: {shouldShuffle ? "Shuffled" : "Standard"}
         </CardContent>
       </Card>
-      <MockExamClient examId={id} questions={preparedQuestions} mode={mode} sessionKey={sessionKey} />
+      <MockExamClient
+        examId={id}
+        questions={preparedQuestions}
+        mode={mode}
+        sessionKey={sessionKey}
+        initialDurationSeconds={durationMinutes * 60}
+      />
     </AppShell>
   );
 }

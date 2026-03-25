@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Clock3, WifiOff } from "lucide-react";
+import { Minus, Plus, AlertTriangle, Clock3, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -24,15 +24,17 @@ export function MockExamClient({
   examId,
   questions,
   mode = "mock",
-  sessionKey
+  sessionKey,
+  initialDurationSeconds
 }: {
   examId: string;
   questions: ReviewQuestion[];
   mode?: "mock" | "quiz";
   sessionKey: string;
+  initialDurationSeconds: number;
 }) {
   const router = useRouter();
-  const duration = mode === "quiz" ? Math.max(questions.length * 60, 10 * 60) : 45 * 60;
+  const duration = Math.max(initialDurationSeconds, 60);
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [timeLeft, setTimeLeft] = React.useState(duration);
   const [answers, setAnswers] = React.useState<Record<string, "A" | "B" | "C" | "D">>({});
@@ -41,6 +43,7 @@ export function MockExamClient({
   const [draftStatus, setDraftStatus] = React.useState("Autosaving your progress...");
   const [isOffline, setIsOffline] = React.useState(false);
   const [hasHydratedDraft, setHasHydratedDraft] = React.useState(false);
+  const [isPaletteOpen, setIsPaletteOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window === "undefined") {
@@ -48,6 +51,7 @@ export function MockExamClient({
     }
 
     setIsOffline(!window.navigator.onLine);
+    setIsPaletteOpen(window.innerWidth >= 1024);
 
     try {
       const rawDraft = window.localStorage.getItem(getDraftKey(sessionKey));
@@ -58,9 +62,11 @@ export function MockExamClient({
         setAnswers(parsedDraft.answers ?? {});
         setDraftStatus(`Recovered your saved ${mode} from ${new Date(parsedDraft.updatedAt).toLocaleString()}.`);
       } else {
+        setTimeLeft(duration);
         setDraftStatus("Autosaving your progress...");
       }
     } catch (_error) {
+      setTimeLeft(duration);
       setDraftStatus("Could not restore an older draft, but autosave is active now.");
     } finally {
       setHasHydratedDraft(true);
@@ -191,7 +197,7 @@ export function MockExamClient({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_240px]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
       <Card>
         <CardHeader className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -221,8 +227,8 @@ export function MockExamClient({
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{currentQuestion.subject}</p>
-            <h2 className="text-2xl font-semibold">{currentQuestion.question_text}</h2>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{currentQuestion.subject}</p>
+            <h2 className="text-base font-semibold leading-7 sm:text-lg sm:leading-8">{currentQuestion.question_text}</h2>
           </div>
 
           <div className="space-y-3">
@@ -233,7 +239,7 @@ export function MockExamClient({
                   key={choice.choice_key}
                   type="button"
                   onClick={() => selectChoice(choice.choice_key)}
-                  className={`w-full rounded-2xl border p-4 text-left transition ${
+                  className={`w-full rounded-2xl border p-3 text-left text-sm transition sm:p-4 sm:text-base ${
                     isActive ? "border-primary bg-primary/5" : "bg-white hover:bg-muted/40"
                   }`}
                 >
@@ -275,27 +281,37 @@ export function MockExamClient({
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>Question palette</CardTitle>
+          <button
+            type="button"
+            onClick={() => setIsPaletteOpen((value) => !value)}
+            className="rounded-xl border p-2"
+            aria-label={isPaletteOpen ? "Hide question palette" : "Show question palette"}
+          >
+            {isPaletteOpen ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          </button>
         </CardHeader>
-        <CardContent className="grid grid-cols-4 gap-3">
-          {questions.map((question, index) => (
-            <button
-              key={question.id}
-              type="button"
-              onClick={() => setCurrentIndex(index)}
-              className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
-                currentIndex === index
-                  ? "border-primary bg-primary text-white"
-                  : answers[question.id]
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : "bg-white"
-              }`}
-            >
-              {index + 1}
-            </button>
-          ))}
-        </CardContent>
+        {isPaletteOpen ? (
+          <CardContent className="grid grid-cols-4 gap-3">
+            {questions.map((question, index) => (
+              <button
+                key={question.id}
+                type="button"
+                onClick={() => setCurrentIndex(index)}
+                className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
+                  currentIndex === index
+                    ? "border-primary bg-primary text-white"
+                    : answers[question.id]
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                      : "bg-white"
+                }`}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </CardContent>
+        ) : null}
       </Card>
     </div>
   );
