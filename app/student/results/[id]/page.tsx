@@ -65,7 +65,7 @@ export default async function ResultsPage({
           ) : (
             <div className="flex flex-wrap gap-2">
               {result.weakTopics.map((topic) => (
-                <span key={topic} className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800">
+                <span key={topic} className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
                   {topic}
                 </span>
               ))}
@@ -95,3 +95,4 @@ export default async function ResultsPage({
     </AppShell>
   );
 }
+

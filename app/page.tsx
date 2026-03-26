@@ -26,7 +26,7 @@ const features = [
 export default function LandingPage() {
   return (
     <main className="container-shell py-8 sm:py-12">
-      <section className="rounded-[32px] border bg-white/90 p-8 shadow-soft backdrop-blur sm:p-12">
+      <section className="rounded-[32px] border bg-card/90 p-8 text-card-foreground shadow-soft backdrop-blur sm:p-12">
         <div className="grid gap-10 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
           <div>
             <p className="mb-4 inline-flex rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground">
@@ -57,11 +57,11 @@ export default function LandingPage() {
                 <p className="mt-2 text-5xl font-bold">82%</p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl bg-white p-4 dark:bg-card">
+                <div className="rounded-2xl bg-card p-4">
                   <p className="text-sm text-muted-foreground">Weak topics</p>
                   <p className="mt-2 text-2xl font-bold">4</p>
                 </div>
-                <div className="rounded-2xl bg-white p-4 dark:bg-card">
+                <div className="rounded-2xl bg-card p-4">
                   <p className="text-sm text-muted-foreground">Upload accuracy</p>
                   <p className="mt-2 text-2xl font-bold">91%</p>
                 </div>
@@ -90,3 +90,4 @@ export default function LandingPage() {
     </main>
   );
 }
+

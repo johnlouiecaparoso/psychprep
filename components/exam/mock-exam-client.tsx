@@ -215,12 +215,12 @@ export function MockExamClient({
             <p>{draftStatus}</p>
           </div>
           {isOffline ? (
-            <div className="flex items-center gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="flex items-center gap-2 rounded-2xl bg-amber-100/70 px-4 py-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
               <WifiOff className="h-4 w-4" />
               You are offline. Keep answering if needed. Your current progress is saved locally.
             </div>
           ) : null}
-          <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
             <AlertTriangle className="h-4 w-4" />
             If you leave the page, refresh, or lose connection, this {mode === "quiz" ? "quiz" : "exam"} will reopen at your saved question on this device.
           </div>
@@ -240,7 +240,7 @@ export function MockExamClient({
                   type="button"
                   onClick={() => selectChoice(choice.choice_key)}
                   className={`w-full rounded-2xl border p-3 text-left text-sm transition sm:p-4 sm:text-base ${
-                    isActive ? "border-primary bg-primary/5" : "bg-white hover:bg-muted/40"
+                    isActive ? "border-primary bg-primary/5" : "bg-card hover:bg-muted/40"
                   }`}
                 >
                   <span className="font-semibold">{choice.choice_key}.</span> {choice.choice_text}
@@ -303,8 +303,8 @@ export function MockExamClient({
                   currentIndex === index
                     ? "border-primary bg-primary text-white"
                     : answers[question.id]
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                      : "bg-white"
+                      ? "border-emerald-400 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                      : "bg-card"
                 }`}
               >
                 {index + 1}
@@ -316,3 +316,4 @@ export function MockExamClient({
     </div>
   );
 }
+

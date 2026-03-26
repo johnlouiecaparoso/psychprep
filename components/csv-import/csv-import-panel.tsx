@@ -172,7 +172,7 @@ export function CsvImportPanel() {
             </CardHeader>
             <CardContent className="space-y-3">
               {preview.errors.length === 0 ? (
-                <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-emerald-700">
+                <div className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 p-4 text-emerald-700 dark:text-emerald-300">
                   <CheckCircle2 className="h-5 w-5" />
                   No validation errors found.
                 </div>
@@ -204,3 +204,4 @@ export function CsvImportPanel() {
     </div>
   );
 }
+

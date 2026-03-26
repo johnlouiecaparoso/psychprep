@@ -71,7 +71,7 @@ function StudentSidebarActions() {
   const actionClassName = (href: string) =>
     cn(
       "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
-      pathname === href ? "bg-primary text-white shadow-sm" : "text-slate-600 hover:bg-muted hover:text-slate-950"
+      pathname === href ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
     );
 
   return (
@@ -87,7 +87,7 @@ function StudentSidebarActions() {
       <button
         type="button"
         onClick={() => void handleLogout()}
-        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-600 transition hover:bg-muted hover:text-slate-950"
+        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
       >
         <LogOut className="h-4 w-4" />
         Logout
@@ -117,7 +117,7 @@ export function AppShell({
   const sidebar = (
     <aside
       className={cn(
-        "max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[28px] border bg-white/95 p-5 shadow-soft backdrop-blur",
+        "max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[28px] border bg-card/95 p-5 text-card-foreground shadow-soft backdrop-blur",
         "lg:sticky lg:top-6 lg:block",
         isSidebarOpen ? "block" : "hidden lg:block"
       )}
@@ -135,7 +135,7 @@ export function AppShell({
         <button
           type="button"
           onClick={() => setIsSidebarOpen(false)}
-          className="rounded-xl border p-2 text-slate-600 lg:hidden"
+          className="rounded-xl border p-2 text-muted-foreground lg:hidden"
           aria-label="Close dashboard menu"
         >
           <X className="h-4 w-4" />
@@ -153,8 +153,8 @@ export function AppShell({
               className={cn(
                 "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
                 isActive
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-slate-600 hover:bg-muted hover:text-slate-950"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <Icon className="h-4 w-4" />
@@ -182,13 +182,13 @@ export function AppShell({
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
           <div className="hidden lg:block">{sidebar}</div>
           <main className="space-y-6">
-            <div className="rounded-[28px] border bg-white/90 p-5 shadow-soft backdrop-blur sm:p-6">
+            <div className="rounded-[28px] border bg-card/90 p-5 text-card-foreground shadow-soft backdrop-blur sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
                   <button
                     type="button"
                     onClick={() => setIsSidebarOpen(true)}
-                    className="rounded-2xl border p-3 text-slate-700 lg:hidden"
+                    className="rounded-2xl border p-3 text-muted-foreground lg:hidden"
                     aria-label="Open dashboard menu"
                   >
                     <Menu className="h-5 w-5" />
@@ -207,7 +207,7 @@ export function AppShell({
       </div>
 
       {isSidebarOpen ? (
-        <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/40 lg:hidden">
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/50 lg:hidden">
           <div className="min-h-full max-w-[300px] p-4">{sidebar}</div>
         </div>
       ) : null}

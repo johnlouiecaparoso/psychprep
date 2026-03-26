@@ -118,10 +118,10 @@ export function FlashcardDeck({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
-            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-white px-4 py-2 text-sm">
+            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {subjects.map((subject) => <option key={subject} value={subject}>{subject === "all" ? "All subjects" : subject}</option>)}
             </select>
-            <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 rounded-2xl border bg-white px-4 py-2 text-sm">
+            <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {topics.map((topic) => <option key={topic} value={topic}>{topic === "all" ? "All topics" : topic}</option>)}
             </select>
             <Button variant={shuffleMode ? "default" : "outline"} onClick={() => setShuffleMode((value) => !value)}><Shuffle className="mr-2 h-4 w-4" />{shuffleMode ? "Shuffle on" : "Shuffle off"}</Button>
@@ -142,10 +142,10 @@ export function FlashcardDeck({
             <div className="text-sm text-muted-foreground">{index + 1} / {orderedCards.length}</div>
           </div>
           <div className="grid gap-4 md:grid-cols-4">
-            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-white px-4 py-2 text-sm">
+            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {subjects.map((subject) => <option key={subject} value={subject}>{subject === "all" ? "All subjects" : subject}</option>)}
             </select>
-            <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 rounded-2xl border bg-white px-4 py-2 text-sm">
+            <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {topics.map((topic) => <option key={topic} value={topic}>{topic === "all" ? "All topics" : topic}</option>)}
             </select>
             <Button variant={shuffleMode ? "default" : "outline"} onClick={() => setShuffleMode((value) => !value)}><Shuffle className="mr-2 h-4 w-4" />{shuffleMode ? "Shuffle on" : "Shuffle off"}</Button>
@@ -161,7 +161,7 @@ export function FlashcardDeck({
           </div>
           <button type="button" onClick={() => setFlipped((value) => !value)} className="flex min-h-[320px] w-full flex-col justify-between rounded-[28px] bg-gradient-to-br from-slate-50 to-emerald-50 p-8 text-left">
             <div className="flex items-center justify-between">
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{flipped ? "Answer" : "Quick prompt"}</span>
+              <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{flipped ? "Answer" : "Quick prompt"}</span>
               <RotateCcw className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
@@ -212,3 +212,4 @@ export function FlashcardDeck({
     </div>
   );
 }
+

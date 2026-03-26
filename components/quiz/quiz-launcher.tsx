@@ -57,7 +57,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
                 <select
                   value={selectedLimit}
                   onChange={(event) => setLimits((prev) => ({ ...prev, [exam.id]: event.target.value }))}
-                  className="h-11 w-full rounded-2xl border bg-white px-4 py-2 text-sm"
+                  className="h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
                 >
                   {[5, 10, 15, 20, exam.questionCount]
                     .filter((value, index, array) => value <= exam.questionCount && array.indexOf(value) === index)
@@ -78,7 +78,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
                   step={5}
                   value={selectedDuration}
                   onChange={(event) => setDurations((prev) => ({ ...prev, [exam.id]: event.target.value }))}
-                  className="h-11 w-full rounded-2xl border bg-white px-4 py-2 text-sm"
+                  className="h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
                 />
               </div>
               <label className="flex items-center justify-between rounded-2xl border bg-muted/30 px-4 py-3 text-sm">
@@ -110,3 +110,4 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
     </section>
   );
 }
+

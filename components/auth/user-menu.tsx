@@ -73,7 +73,7 @@ export function UserMenu({ role }: { role?: Role }) {
           <LogOut className="h-4 w-4" />
           Logout
         </Button>
-        <div className="ml-1 flex items-center gap-2 rounded-full border bg-white px-2 py-1">
+        <div className="ml-1 flex items-center gap-2 rounded-full border bg-card px-2 py-1 text-card-foreground">
           <Avatar className="h-8 w-8">
             <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email || ""} />
             <AvatarFallback>
@@ -132,3 +132,4 @@ export function UserMenu({ role }: { role?: Role }) {
     </>
   );
 }
+
