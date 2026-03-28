@@ -37,6 +37,11 @@ export interface StudentStudyOverview {
   recommendedFocus: string;
 }
 
+export interface SubjectSummary {
+  name: string;
+  examCount: number;
+}
+
 export class DashboardService {
   private client: SupabaseClient;
 
@@ -219,6 +224,27 @@ export class DashboardService {
       availableReviewers: availableReviewersRes.count ?? 0,
       recommendedFocus: weakTopics[0]?.topic ?? "Start with a full mock exam"
     };
+  }
+
+  async getAvailableSubjects(): Promise<SubjectSummary[]> {
+    const { data, error } = await this.client
+      .from("mock_exams")
+      .select("id, subjects(name)")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    const subjectMap = new Map<string, number>();
+    (data ?? []).forEach((exam: any) => {
+      const subjectName = exam.subjects?.name ?? "Unassigned Subject";
+      subjectMap.set(subjectName, (subjectMap.get(subjectName) ?? 0) + 1);
+    });
+
+    return Array.from(subjectMap.entries())
+      .map(([name, examCount]) => ({ name, examCount }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   private async calculateStudyStreak(studentId: string): Promise<number> {

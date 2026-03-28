@@ -5,9 +5,13 @@ import { useRouter } from "next/navigation";
 import { Minus, Plus, AlertTriangle, Clock3, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PomodoroFocusTimer } from "@/components/study-technique/pomodoro-focus-timer";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import type { ReviewQuestion } from "@/lib/types";
+import { useAuth } from "@/lib/auth-context";
+import { buildOfflineResult, queueOfflineAttempt, saveOfflineResult } from "@/lib/offline-exam-store";
+import { getTechniqueSessionMessage } from "@/lib/study-techniques";
+import type { ReviewQuestion, StudyTechnique } from "@/lib/types";
 
 type DraftPayload = {
   currentIndex: number;
@@ -22,18 +26,29 @@ function getDraftKey(sessionKey: string) {
 
 export function MockExamClient({
   examId,
+  examTitle,
+  subject,
   questions,
   mode = "mock",
   sessionKey,
-  initialDurationSeconds
+  initialDurationSeconds,
+  studyTechnique = "practice_test",
+  sessionMessage,
+  offlineMode = false
 }: {
   examId: string;
+  examTitle?: string;
+  subject?: string;
   questions: ReviewQuestion[];
   mode?: "mock" | "quiz";
   sessionKey: string;
   initialDurationSeconds: number;
+  studyTechnique?: StudyTechnique;
+  sessionMessage?: string | null;
+  offlineMode?: boolean;
 }) {
   const router = useRouter();
+  const { userId } = useAuth();
   const duration = Math.max(initialDurationSeconds, 60);
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [timeLeft, setTimeLeft] = React.useState(duration);
@@ -72,6 +87,17 @@ export function MockExamClient({
       setHasHydratedDraft(true);
     }
   }, [duration, mode, questions.length, sessionKey]);
+
+  React.useEffect(() => {
+    if (studyTechnique === "active_recall") {
+      setIsPaletteOpen(false);
+      return;
+    }
+
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+      setIsPaletteOpen(true);
+    }
+  }, [studyTechnique]);
 
   React.useEffect(() => {
     if (!hasHydratedDraft) {
@@ -161,6 +187,35 @@ export function MockExamClient({
         throw new Error("Select at least one answer before submitting.");
       }
 
+      if (offlineMode || !window.navigator.onLine) {
+        const offlineAttemptId = `offline-attempt:${examId}:${Date.now()}`;
+        const offlineResult = buildOfflineResult({
+          attemptId: offlineAttemptId,
+          examTitle: examTitle ?? `${questions[0]?.subject ?? "Study"} set`,
+          subject: subject ?? questions[0]?.subject ?? "Unassigned Subject",
+          mode,
+          questions,
+          answers
+        });
+
+        await saveOfflineResult(offlineResult);
+        await queueOfflineAttempt({
+          id: offlineAttemptId,
+          userId: userId ?? "anonymous",
+          mockExamId: examId,
+          answers: payload,
+          createdAt: new Date().toISOString(),
+          mode,
+          syncedAt: null,
+          serverAttemptId: null
+        });
+
+        window.localStorage.removeItem(getDraftKey(sessionKey));
+        router.push(`/student/results/offline?attemptId=${encodeURIComponent(offlineAttemptId)}`);
+        router.refresh();
+        return;
+      }
+
       const response = await fetch("/api/mock-exams/submit", {
         method: "POST",
         headers: {
@@ -197,122 +252,129 @@ export function MockExamClient({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
-      <Card>
-        <CardHeader className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle>{mode === "quiz" ? "Quiz in progress" : "Mock exam in progress"}</CardTitle>
-            <div className="flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground">
-              <Clock3 className="h-4 w-4" />
-              {minutes}:{seconds}
-            </div>
-          </div>
-          <Progress value={progress} />
-          <div className="flex flex-wrap items-start justify-between gap-3 text-sm text-muted-foreground">
-            <p>
-              Question {currentIndex + 1} of {questions.length}
-            </p>
-            <p>{draftStatus}</p>
-          </div>
-          {isOffline ? (
-            <div className="flex items-center gap-2 rounded-2xl bg-amber-100/70 px-4 py-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
-              <WifiOff className="h-4 w-4" />
-              You are offline. Keep answering if needed. Your current progress is saved locally.
-            </div>
-          ) : null}
-          <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-            <AlertTriangle className="h-4 w-4" />
-            If you leave the page, refresh, or lose connection, this {mode === "quiz" ? "quiz" : "exam"} will reopen at your saved question on this device.
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-3">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{currentQuestion.subject}</p>
-            <h2 className="text-base font-semibold leading-7 sm:text-lg sm:leading-8">{currentQuestion.question_text}</h2>
-          </div>
+    <div className="space-y-6">
+      {studyTechnique === "pomodoro" ? <PomodoroFocusTimer /> : null}
 
-          <div className="space-y-3">
-            {currentQuestion.choices.map((choice) => {
-              const isActive = answers[currentQuestion.id] === choice.choice_key;
-              return (
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
+        <Card>
+          <CardHeader className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>{mode === "quiz" ? "Quiz in progress" : "Mock exam in progress"}</CardTitle>
+              <div className="flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground">
+                <Clock3 className="h-4 w-4" />
+                {minutes}:{seconds}
+              </div>
+            </div>
+            <Progress value={progress} />
+            <div className="rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
+              {sessionMessage ?? getTechniqueSessionMessage(studyTechnique, mode)}
+            </div>
+            <div className="flex flex-wrap items-start justify-between gap-3 text-sm text-muted-foreground">
+              <p>
+                Question {currentIndex + 1} of {questions.length}
+              </p>
+              <p>{draftStatus}</p>
+            </div>
+            {isOffline ? (
+              <div className="flex items-center gap-2 rounded-2xl bg-amber-100/70 px-4 py-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+                <WifiOff className="h-4 w-4" />
+                You are offline. Keep answering if needed. Your current progress is saved locally and this {mode} can be queued for sync later.
+              </div>
+            ) : null}
+            <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
+              <AlertTriangle className="h-4 w-4" />
+              If you leave the page, refresh, or lose connection, this {mode === "quiz" ? "quiz" : "exam"} will reopen at your saved question on this device.
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{currentQuestion.subject}</p>
+              <h2 className="text-base font-semibold leading-7 sm:text-lg sm:leading-8">{currentQuestion.question_text}</h2>
+            </div>
+
+            <div className="space-y-3">
+              {currentQuestion.choices.map((choice) => {
+                const isActive = answers[currentQuestion.id] === choice.choice_key;
+                return (
+                  <button
+                    key={choice.choice_key}
+                    type="button"
+                    onClick={() => selectChoice(choice.choice_key)}
+                    className={`w-full rounded-2xl border p-3 text-left text-sm transition sm:p-4 sm:text-base ${
+                      isActive ? "border-primary bg-primary/5" : "bg-card hover:bg-muted/40"
+                    }`}
+                  >
+                    <span className="font-semibold">{choice.choice_key}.</span> {choice.choice_text}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap justify-between gap-3">
+              <Button variant="outline" onClick={() => setCurrentIndex((value) => Math.max(0, value - 1))} disabled={currentIndex === 0}>
+                Previous
+              </Button>
+              <div className="flex gap-3">
+                <Button variant="secondary" onClick={() => setCurrentIndex((value) => Math.min(questions.length - 1, value + 1))} disabled={currentIndex === questions.length - 1}>
+                  Next
+                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button>{mode === "quiz" ? "Submit quiz" : "Submit exam"}</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <h3 className="text-xl font-semibold">Submit {mode === "quiz" ? "quiz" : "attempt"}?</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Once submitted, the system will compute your score, weak topics, and explanations review.
+                    </p>
+                    {submitError ? <p className="mt-3 text-sm text-destructive">{submitError}</p> : null}
+                    <div className="mt-6 flex justify-end gap-3">
+                      <Button variant="outline">Cancel</Button>
+                      <Button onClick={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? "Submitting..." : `Confirm ${mode === "quiz" ? "quiz" : "submit"}`}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle>Question palette</CardTitle>
+            <button
+              type="button"
+              onClick={() => setIsPaletteOpen((value) => !value)}
+              className="rounded-xl border p-2"
+              aria-label={isPaletteOpen ? "Hide question palette" : "Show question palette"}
+            >
+              {isPaletteOpen ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            </button>
+          </CardHeader>
+          {isPaletteOpen ? (
+            <CardContent className="grid grid-cols-4 gap-3">
+              {questions.map((question, index) => (
                 <button
-                  key={choice.choice_key}
+                  key={question.id}
                   type="button"
-                  onClick={() => selectChoice(choice.choice_key)}
-                  className={`w-full rounded-2xl border p-3 text-left text-sm transition sm:p-4 sm:text-base ${
-                    isActive ? "border-primary bg-primary/5" : "bg-card hover:bg-muted/40"
+                  onClick={() => setCurrentIndex(index)}
+                  className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
+                    currentIndex === index
+                      ? "border-primary bg-primary text-white"
+                      : answers[question.id]
+                        ? "border-emerald-400 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                        : "bg-card"
                   }`}
                 >
-                  <span className="font-semibold">{choice.choice_key}.</span> {choice.choice_text}
+                  {index + 1}
                 </button>
-              );
-            })}
-          </div>
-
-          <div className="flex flex-wrap justify-between gap-3">
-            <Button variant="outline" onClick={() => setCurrentIndex((value) => Math.max(0, value - 1))} disabled={currentIndex === 0}>
-              Previous
-            </Button>
-            <div className="flex gap-3">
-              <Button variant="secondary" onClick={() => setCurrentIndex((value) => Math.min(questions.length - 1, value + 1))} disabled={currentIndex === questions.length - 1}>
-                Next
-              </Button>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button>{mode === "quiz" ? "Submit quiz" : "Submit exam"}</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <h3 className="text-xl font-semibold">Submit {mode === "quiz" ? "quiz" : "attempt"}?</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Once submitted, the system will compute your score, weak topics, and explanations review.
-                  </p>
-                  {submitError ? <p className="mt-3 text-sm text-destructive">{submitError}</p> : null}
-                  <div className="mt-6 flex justify-end gap-3">
-                    <Button variant="outline">Cancel</Button>
-                    <Button onClick={handleSubmit} disabled={isSubmitting}>
-                      {isSubmitting ? "Submitting..." : `Confirm ${mode === "quiz" ? "quiz" : "submit"}`}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>Question palette</CardTitle>
-          <button
-            type="button"
-            onClick={() => setIsPaletteOpen((value) => !value)}
-            className="rounded-xl border p-2"
-            aria-label={isPaletteOpen ? "Hide question palette" : "Show question palette"}
-          >
-            {isPaletteOpen ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          </button>
-        </CardHeader>
-        {isPaletteOpen ? (
-          <CardContent className="grid grid-cols-4 gap-3">
-            {questions.map((question, index) => (
-              <button
-                key={question.id}
-                type="button"
-                onClick={() => setCurrentIndex(index)}
-                className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
-                  currentIndex === index
-                    ? "border-primary bg-primary text-white"
-                    : answers[question.id]
-                      ? "border-emerald-400 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                      : "bg-card"
-                }`}
-              >
-                {index + 1}
-              </button>
-            ))}
-          </CardContent>
-        ) : null}
-      </Card>
+              ))}
+            </CardContent>
+          ) : null}
+        </Card>
+      </div>
     </div>
   );
 }

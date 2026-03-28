@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MockExamClient } from "@/components/exam/mock-exam-client";
 import { createClient } from "@/lib/supabase/server";
 import { getMockExamQuestions } from "@/lib/supabase/review-service";
-import type { ReviewQuestion } from "@/lib/types";
+import { getCurrentStudyTechniqueServer, getStudyTechniquesServer } from "@/lib/supabase/study-technique-server";
+import type { ReviewQuestion, StudyTechnique } from "@/lib/types";
 
 function seededShuffle<T>(items: T[], seed: string) {
   const result = [...items];
@@ -30,6 +31,9 @@ export default async function StudentMockExamPage({
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
   const baseQuestions = await getMockExamQuestions(supabase, id);
 
   if (baseQuestions.length === 0) {
@@ -51,6 +55,9 @@ export default async function StudentMockExamPage({
 
   let preparedQuestions: ReviewQuestion[] = shouldShuffle ? seededShuffle(baseQuestions, seed) : baseQuestions;
   preparedQuestions = mode === "quiz" ? preparedQuestions.slice(0, safeLimit) : preparedQuestions;
+  const currentTechnique = user ? await getCurrentStudyTechniqueServer(user.id) : null;
+  const techniqueFallback = currentTechnique ?? (await getStudyTechniquesServer())[0] ?? null;
+  const studyTechnique = (techniqueFallback?.slug ?? "practice_test") as StudyTechnique;
 
   const topicCount = new Set(preparedQuestions.map((question) => question.topic)).size;
   const sessionKey = `${id}:${mode}:${safeLimit}:${durationMinutes}:${shouldShuffle ? `shuffle:${seed}` : "ordered"}`;
@@ -59,19 +66,25 @@ export default async function StudentMockExamPage({
     <AppShell
       role="student"
       title={mode === "quiz" ? "Quick quiz" : "Timed mock exam"}
-      description={mode === "quiz" ? "Answer a shorter targeted set, adjust your own timer, and keep the session light enough for active recall." : "Take one question at a time, choose a timer that fits your pace, and submit when you're ready."}
+      description={mode === "quiz"
+        ? `Answer a shorter targeted set while ${(techniqueFallback?.name ?? "Practice Test")} guides how you practice.`
+        : `Take one question at a time while ${(techniqueFallback?.name ?? "Practice Test")} shapes this review session.`}
     >
       <Card>
         <CardContent className="p-6 text-sm text-muted-foreground">
-          Subject: {preparedQuestions[0].subject} | Topic coverage: {topicCount} | Items: {preparedQuestions.length} | Time: {durationMinutes} min | Order: {shouldShuffle ? "Shuffled" : "Standard"}
+          Subject: {preparedQuestions[0].subject} | Topic coverage: {topicCount} | Items: {preparedQuestions.length} | Time: {durationMinutes} min | Order: {shouldShuffle ? "Shuffled" : "Standard"} | Mode: {techniqueFallback?.name ?? "Practice Test"}
         </CardContent>
       </Card>
       <MockExamClient
         examId={id}
+        examTitle={`${preparedQuestions[0].subject} reviewer set`}
+        subject={preparedQuestions[0].subject}
         questions={preparedQuestions}
         mode={mode}
         sessionKey={sessionKey}
         initialDurationSeconds={durationMinutes * 60}
+        studyTechnique={studyTechnique}
+        sessionMessage={techniqueFallback?.session_message}
       />
     </AppShell>
   );

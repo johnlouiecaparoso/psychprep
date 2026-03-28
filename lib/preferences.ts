@@ -13,7 +13,11 @@ export function normalizePreferences(value: unknown): UserPreferences {
     push_notifications: typeof source.push_notifications === "boolean" ? source.push_notifications : defaultUserPreferences.push_notifications,
     email_reminders: typeof source.email_reminders === "boolean" ? source.email_reminders : defaultUserPreferences.email_reminders,
     study_reminders: typeof source.study_reminders === "boolean" ? source.study_reminders : defaultUserPreferences.study_reminders,
-    theme: source.theme === "light" || source.theme === "dark" || source.theme === "system" ? source.theme : defaultUserPreferences.theme
+    theme: source.theme === "light" || source.theme === "dark" || source.theme === "system" ? source.theme : defaultUserPreferences.theme,
+    study_technique:
+      source.study_technique === "active_recall" || source.study_technique === "pomodoro" || source.study_technique === "practice_test"
+        ? source.study_technique
+        : defaultUserPreferences.study_technique
   };
 }
 

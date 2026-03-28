@@ -6,13 +6,17 @@ import { AppShell } from "@/components/app-shell";
 import { PerformanceChart } from "@/components/charts/performance-chart";
 import { WeakTopicsChart } from "@/components/charts/weak-topics-chart";
 import { StatCard } from "@/components/stat-card";
+import { StudyTechniquePanel } from "@/components/study-technique/study-technique-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
-import { DashboardService, type StudentStats, type PerformanceData, type RecentExam, type StudentStudyOverview, type WeakTopic } from "@/lib/supabase/dashboard-service";
+import { DashboardService, type StudentStats, type PerformanceData, type RecentExam, type StudentStudyOverview, type SubjectSummary, type WeakTopic } from "@/lib/supabase/dashboard-service";
+import { StudyTechniqueService } from "@/lib/supabase/study-technique-client";
+import type { CurrentStudyTechnique, StudyTechniqueRecord } from "@/lib/supabase/study-technique-types";
 import { ROLE_LABELS } from "@/lib/constants";
 import { getReadiness, cn } from "@/lib/utils";
+import type { StudyTechnique } from "@/lib/types";
 
 export default function StudentPage() {
   const { userId, userRole, loading: authLoading } = useAuth();
@@ -21,6 +25,10 @@ export default function StudentPage() {
   const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
   const [recentExams, setRecentExams] = useState<RecentExam[]>([]);
   const [studyOverview, setStudyOverview] = useState<StudentStudyOverview | null>(null);
+  const [availableSubjects, setAvailableSubjects] = useState<SubjectSummary[]>([]);
+  const [studyTechniques, setStudyTechniques] = useState<StudyTechniqueRecord[]>([]);
+  const [currentTechnique, setCurrentTechnique] = useState<CurrentStudyTechnique | null>(null);
+  const [applyingTechnique, setApplyingTechnique] = useState<StudyTechnique | null>(null);
   const [readinessScore, setReadinessScore] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,13 +39,17 @@ export default function StudentPage() {
 
       try {
         const dashboardService = new DashboardService();
-        const [statsData, performanceData, weakTopicsData, recentExamsData, readinessData, studyOverviewData] = await Promise.all([
+        const studyTechniqueService = new StudyTechniqueService();
+        const [statsData, performanceData, weakTopicsData, recentExamsData, readinessData, studyOverviewData, subjectsData, techniquesData, currentTechniqueData] = await Promise.all([
           dashboardService.getStudentStats(userId),
           dashboardService.getPerformanceData(userId),
           dashboardService.getWeakTopics(userId),
           dashboardService.getRecentExams(userId),
           dashboardService.getReadinessScore(userId),
-          dashboardService.getStudyOverview(userId)
+          dashboardService.getStudyOverview(userId),
+          dashboardService.getAvailableSubjects(),
+          studyTechniqueService.getStudyTechniques(),
+          studyTechniqueService.getCurrentStudyTechnique(userId)
         ]);
 
         setStats(statsData);
@@ -46,6 +58,14 @@ export default function StudentPage() {
         setRecentExams(recentExamsData);
         setReadinessScore(readinessData.score);
         setStudyOverview(studyOverviewData);
+        setAvailableSubjects(subjectsData);
+        setStudyTechniques(techniquesData);
+        const fallbackTechnique = currentTechniqueData
+          ? currentTechniqueData
+          : techniquesData[0]
+            ? { ...techniquesData[0], selected_at: "" }
+            : null;
+        setCurrentTechnique(fallbackTechnique);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load dashboard data");
         console.error("Dashboard data fetch error:", err);
@@ -59,6 +79,29 @@ export default function StudentPage() {
 
   const readiness = getReadiness(readinessScore);
   const role = userRole === "student" ? "student" : "student";
+  const activeTechnique = currentTechnique ?? studyTechniques[0] ?? null;
+
+  async function handleApplyTechnique(technique: StudyTechnique) {
+    if (!userId) {
+      return;
+    }
+
+    try {
+      setApplyingTechnique(technique);
+      const studyTechniqueService = new StudyTechniqueService();
+      await studyTechniqueService.applyTechnique(technique);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("psychboard-active-study-technique", technique);
+        window.dispatchEvent(new CustomEvent("study-technique-changed", { detail: { technique } }));
+      }
+      const updatedTechnique = await studyTechniqueService.getCurrentStudyTechnique(userId);
+      setCurrentTechnique(updatedTechnique);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to apply study technique");
+    } finally {
+      setApplyingTechnique(null);
+    }
+  }
 
   if (loading || authLoading) {
     return (
@@ -89,12 +132,23 @@ export default function StudentPage() {
         {statCards.map((stat) => <StatCard key={stat.label} {...stat} />)}
       </section>
 
+      <StudyTechniquePanel
+        techniques={studyTechniques}
+        currentTechnique={currentTechnique}
+        weakTopicNames={weakTopics.map((topic) => topic.topic)}
+        availableExams={studyOverview?.availableExams ?? 0}
+        applyingTechnique={applyingTechnique}
+        onApply={handleApplyTechnique}
+      />
+
       <section className="grid gap-6 xl:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader><CardTitle>Next best move</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <p className="text-2xl font-semibold">{studyOverview?.recommendedFocus ?? "Start with a mock exam"}</p>
-            <p className="text-sm text-muted-foreground">Recommended focus based on your weakest available topic and current study history.</p>
+            <p className="text-sm text-muted-foreground">
+              Recommended focus based on your weakest available topic, recent study history, and your current {activeTechnique?.name ?? "study"} mode.
+            </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl bg-muted/40 p-4">
                 <p className="text-sm text-muted-foreground">Available mock exams</p>
@@ -106,7 +160,9 @@ export default function StudentPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link href="/student/mock-exams" className={buttonVariants()}>Take mock exam</Link>
+              {activeTechnique ? <Link href={activeTechnique.recommended_href as any} className={buttonVariants()}>{activeTechnique.recommended_action_label}</Link> : null}
+              <Link href="/student/mock-exams" className={cn(buttonVariants({ variant: "outline" }))}>Mock exams</Link>
+              <Link href="/student/flashcards" className={cn(buttonVariants({ variant: "outline" }))}>Flashcards</Link>
               <Link href="/student/reviewers" className={cn(buttonVariants({ variant: "outline" }))}>Open reviewers</Link>
             </div>
           </CardContent>
@@ -139,6 +195,24 @@ export default function StudentPage() {
         </Card>
       </section>
 
+      <Card>
+        <CardHeader><CardTitle>All subjects</CardTitle></CardHeader>
+        <CardContent>
+          {availableSubjects.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No subjects available yet. Once you upload more reviewer, quiz, and flashcard content, they will appear here.</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {availableSubjects.map((subject) => (
+                <div key={subject.name} className="rounded-2xl bg-muted/40 p-4">
+                  <p className="font-semibold">{subject.name}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{subject.examCount} chapter{subject.examCount === 1 ? "" : "s"} available</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <section className="grid gap-6 xl:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader><CardTitle>Recent exams</CardTitle></CardHeader>
@@ -159,11 +233,29 @@ export default function StudentPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Study reminders</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Mode-aware reminders</CardTitle></CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Use flashcards after every mock exam to reinforce missed concepts.</p>
-            <p>Review one PDF handout before sleeping to improve retention.</p>
-            <p>Retake weak subjects after 24 to 48 hours for spaced repetition.</p>
+            {activeTechnique?.slug === "active_recall" ? (
+              <>
+                <p>Say the answer out loud before flipping each flashcard.</p>
+                <p>Move your missed cards into another short recall round before you stop.</p>
+                <p>Use quick quiz after flashcards to test the same topic without rereading first.</p>
+              </>
+            ) : null}
+            {activeTechnique?.slug === "pomodoro" ? (
+              <>
+                <p>Finish one full 25-minute block before checking messages or notes.</p>
+                <p>Use your break to rest, not to switch into another distracting app.</p>
+                <p>Stack two focus rounds on your weakest subject before changing topics.</p>
+              </>
+            ) : null}
+            {activeTechnique?.slug === "practice_test" || !activeTechnique ? (
+              <>
+                <p>Run at least one timed set with shuffled questions this week.</p>
+                <p>Review explanations only after you submit the full attempt.</p>
+                <p>Retake weak subjects after 24 to 48 hours for spaced repetition.</p>
+              </>
+            ) : null}
           </CardContent>
         </Card>
       </section>

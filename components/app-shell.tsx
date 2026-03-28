@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpenText,
   BrainCircuit,
+  Download,
   FileSpreadsheet,
   LayoutDashboard,
   Layers3,
@@ -21,6 +22,8 @@ import { APP_NAME } from "@/lib/constants";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
+import { FloatingPomodoroWidget } from "@/components/study-technique/floating-pomodoro-widget";
+import { PwaInstallGuide } from "@/components/pwa-install-guide";
 import { createClient } from "@/lib/supabase/client";
 
 type NavItem = {
@@ -49,7 +52,8 @@ const navByRole: Record<Role, NavItem[]> = {
     { href: "/student/mock-exams", label: "Mock Exams", icon: BrainCircuit },
     { href: "/student/quiz", label: "Quick Quiz", icon: Layers3 },
     { href: "/student/flashcards", label: "Flashcards", icon: Layers3 },
-    { href: "/student/reviewers", label: "Reviewers", icon: BookOpenText }
+    { href: "/student/reviewers", label: "Reviewers", icon: BookOpenText },
+    { href: "/student/offline-downloads", label: "Offline Downloads", icon: Download }
   ]
 };
 
@@ -185,6 +189,7 @@ export function AppShell({
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
           <div className="hidden lg:block">{sidebar}</div>
           <main className="space-y-6">
+            {role === "student" ? <PwaInstallGuide /> : null}
             <div className="rounded-[28px] border bg-card/90 p-5 text-card-foreground shadow-soft backdrop-blur sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
@@ -214,6 +219,8 @@ export function AppShell({
           <div className="min-h-full max-w-[300px] p-4">{sidebar}</div>
         </div>
       ) : null}
+
+      {role === "student" ? <FloatingPomodoroWidget /> : null}
     </div>
   );
 }

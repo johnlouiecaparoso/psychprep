@@ -67,3 +67,26 @@ body {
 .container-shell {
   @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
 }
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  #results-report {
+    padding: 0;
+  }
+
+  #results-report * {
+    box-shadow: none !important;
+  }
+
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+}

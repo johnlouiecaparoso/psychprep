@@ -17,8 +17,12 @@ export default function OfflinePage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">You are offline</h1>
             <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-              PsychBoard can still open cached pages, but live dashboards, uploads, and fresh exam data need an internet connection.
+              PsychBoard can still open cached study pages in the installed PWA, but live dashboards, uploads, and fresh exam data need an internet connection.
             </p>
+          </div>
+          <div className="rounded-2xl bg-muted/40 p-4 text-left text-sm text-muted-foreground">
+            <p className="font-semibold text-foreground">Offline-ready features</p>
+            <p className="mt-2">Open the installed PWA while online first so your student dashboard, flashcards, quizzes, and mock exam launcher can be cached for offline use.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-3">
             <Link href="/" className={buttonVariants()}>

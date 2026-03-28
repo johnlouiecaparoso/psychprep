@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronDown, Shuffle } from "lucide-react";
+import { ArrowLeft, ChevronDown, Download, Shuffle } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useOfflineStudyPack } from "@/components/exam/use-offline-study-pack";
 import type { MockExamSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
   const [shuffle, setShuffle] = React.useState<Record<string, boolean>>({});
   const [selectedSubject, setSelectedSubject] = React.useState<string | null>(null);
   const [openExamId, setOpenExamId] = React.useState<string | null>(null);
+  const { downloadState, availableOffline, downloadPack, openOfflinePack } = useOfflineStudyPack(exams);
   const examsBySubject = React.useMemo(() => {
     const grouped = new Map<string, MockExamSummary[]>();
 
@@ -110,7 +112,10 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
                   className="flex w-full items-center justify-between gap-4 text-left"
                 >
                   <div>
-                    <CardTitle>{exam.chapterLabel}</CardTitle>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle>{exam.chapterLabel}</CardTitle>
+                      {availableOffline[exam.id] ? <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">Offline ready</span> : null}
+                    </div>
                     <p className="mt-2 text-sm text-muted-foreground">{exam.title}</p>
                   </div>
                   <ChevronDown className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -171,6 +176,32 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
                   >
                     Full exam
                   </a>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Button variant="outline" className="w-full" onClick={() => void downloadPack(exam)}>
+                    <Download className="mr-2 h-4 w-4" />
+                    {downloadState[exam.id] === "downloading"
+                      ? "Downloading..."
+                      : downloadState[exam.id] === "saved"
+                        ? "Saved offline"
+                        : "Download offline"}
+                  </Button>
+                  {availableOffline[exam.id] ? (
+                    <Button
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() =>
+                        openOfflinePack({
+                          exam,
+                          mode: "quiz",
+                          limit: selectedLimit,
+                          duration: selectedDuration,
+                          shuffle: isShuffled
+                        })}
+                    >
+                      Open offline quiz
+                    </Button>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>

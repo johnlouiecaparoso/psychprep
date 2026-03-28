@@ -1,8 +1,9 @@
-import { DEFAULT_USER_PREFERENCES, DIFFICULTIES, ROLES, THEME_OPTIONS } from "@/lib/constants";
+import { DEFAULT_USER_PREFERENCES, DIFFICULTIES, ROLES, STUDY_TECHNIQUES, THEME_OPTIONS } from "@/lib/constants";
 
 export type Role = (typeof ROLES)[number];
 export type Difficulty = (typeof DIFFICULTIES)[number];
 export type ThemePreference = (typeof THEME_OPTIONS)[number];
+export type StudyTechnique = (typeof STUDY_TECHNIQUES)[number];
 
 export type UserPreferences = {
   email_notifications: boolean;
@@ -10,6 +11,7 @@ export type UserPreferences = {
   email_reminders: boolean;
   study_reminders: boolean;
   theme: ThemePreference;
+  study_technique: StudyTechnique;
 };
 
 export const defaultUserPreferences: UserPreferences = {

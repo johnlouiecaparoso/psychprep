@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Manrope } from "next/font/google";
 import "./globals.css";
+import { OfflineSupport } from "@/components/offline-support";
 import { PwaRegistrar } from "@/components/pwa-registrar";
 import { AuthProvider } from "@/lib/auth-context";
 import { APP_NAME } from "@/lib/constants";
@@ -40,6 +41,7 @@ export default function RootLayout({
       <body className={manrope.className}>
         <AuthProvider>
           <PwaRegistrar />
+          <OfflineSupport />
           {children}
         </AuthProvider>
       </body>

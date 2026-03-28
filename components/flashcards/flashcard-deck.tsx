@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import type { ParsedImportRow, ReviewQuestion } from "@/lib/types";
+import type { ParsedImportRow, ReviewQuestion, StudyTechnique } from "@/lib/types";
 
 type FlashcardItem = ParsedImportRow | ReviewQuestion;
 type ReviewMark = "know" | "hard" | "again";
@@ -46,15 +46,17 @@ function shuffleItems<T>(items: T[]) {
 
 export function FlashcardDeck({
   cards,
-  weakTopics = []
+  weakTopics = [],
+  studyTechnique = "practice_test"
 }: {
   cards: FlashcardItem[];
   weakTopics?: string[];
+  studyTechnique?: StudyTechnique;
 }) {
   const [selectedSubject, setSelectedSubject] = React.useState("all");
   const [selectedTopic, setSelectedTopic] = React.useState("all");
-  const [shuffleMode, setShuffleMode] = React.useState(false);
-  const [weakOnly, setWeakOnly] = React.useState(false);
+  const [shuffleMode, setShuffleMode] = React.useState(studyTechnique === "active_recall");
+  const [weakOnly, setWeakOnly] = React.useState(studyTechnique === "active_recall" && weakTopics.length > 0);
   const [orderedCards, setOrderedCards] = React.useState<FlashcardItem[]>(cards);
   const [index, setIndex] = React.useState(0);
   const [flipped, setFlipped] = React.useState(false);
@@ -81,6 +83,15 @@ export function FlashcardDeck({
     setIndex(0);
     setFlipped(false);
   }, [filteredCards, shuffleMode]);
+
+  React.useEffect(() => {
+    if (studyTechnique === "active_recall") {
+      setShuffleMode(true);
+      if (weakTopics.length > 0) {
+        setWeakOnly(true);
+      }
+    }
+  }, [studyTechnique, weakTopics.length]);
 
   const current = orderedCards[index];
   const progress = orderedCards.length > 0 ? (Object.keys(reviewState).length / orderedCards.length) * 100 : 0;
@@ -140,6 +151,13 @@ export function FlashcardDeck({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle>Flashcards</CardTitle>
             <div className="text-sm text-muted-foreground">{index + 1} / {orderedCards.length}</div>
+          </div>
+          <div className="rounded-2xl bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            {studyTechnique === "active_recall"
+              ? "Active Recall mode keeps answers hidden, shuffles the deck, and focuses weak topics first."
+              : studyTechnique === "pomodoro"
+                ? "Pomodoro mode works best when you finish one uninterrupted card round before taking a short break."
+                : "Practice Test mode lets you warm up on cards before taking a full timed set."}
           </div>
           <div className="grid gap-4 md:grid-cols-4">
             <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
