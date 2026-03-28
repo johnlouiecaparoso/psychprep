@@ -60,9 +60,13 @@ const navByRole: Record<Role, NavItem[]> = {
 function StudentSidebarActions() {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => (typeof window === "undefined" ? null : createClient()), []);
 
   async function handleLogout() {
+    if (!supabase) {
+      return;
+    }
+
     try {
       await supabase.auth.signOut();
       router.push("/");

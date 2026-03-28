@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "./supabase/client";
 import { applyTheme, normalizePreferences, THEME_STORAGE_KEY } from "./preferences";
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences>(defaultUserPreferences);
   const [loading, setLoading] = useState(true);
-  const supabase = useMemo(() => createClient(), []);
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
 
   const readStoredTheme = (): ThemePreference => {
     if (typeof window === "undefined") {
@@ -52,6 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchUserRole = async (sessionUser: User) => {
+    if (!supabase) {
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -74,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updatePreferences = async (nextPreferences: UserPreferences) => {
-    if (!user) {
+    if (!user || !supabase) {
       setPreferences(nextPreferences);
       applyTheme(nextPreferences.theme);
       return;
@@ -101,6 +105,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    setSupabase(createClient());
+  }, []);
+
+  useEffect(() => {
     const mediaQuery = typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
 
     if (!mediaQuery) {
@@ -118,6 +130,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [preferences.theme]);
 
   useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
     let active = true;
 
     const bootstrap = async () => {

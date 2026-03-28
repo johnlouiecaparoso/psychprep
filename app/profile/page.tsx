@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,24 +20,28 @@ export default function ProfilePage() {
     full_name: "",
     email: ""
   });
-  const supabase = createClient();
+  const supabase = useMemo(() => (typeof window === "undefined" ? null : createClient()), []);
   const shellRole: Role = (userRole as Role) || "student";
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && supabase) {
       void fetchProfile();
     }
     if (!authLoading && !user) {
       setLoading(false);
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, supabase]);
 
   const fetchProfile = async () => {
+    if (!supabase || !user) {
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user?.id)
+        .eq("id", user.id)
         .single();
 
       if (error) throw error;
@@ -55,6 +59,10 @@ export default function ProfilePage() {
   };
 
   const handleUpdate = async () => {
+    if (!supabase || !user) {
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("profiles")
@@ -62,7 +70,7 @@ export default function ProfilePage() {
           full_name: formData.full_name,
           email: formData.email
         })
-        .eq("id", user?.id);
+        .eq("id", user.id);
 
       if (error) throw error;
 

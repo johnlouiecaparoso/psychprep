@@ -21,9 +21,13 @@ import type { Role } from "@/lib/types";
 export function UserMenu({ role }: { role?: Role }) {
   const { user } = useAuth();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = React.useMemo(() => (typeof window === "undefined" ? null : createClient()), []);
 
   const handleLogout = async () => {
+    if (!supabase) {
+      return;
+    }
+
     try {
       await supabase.auth.signOut();
       router.push("/");
