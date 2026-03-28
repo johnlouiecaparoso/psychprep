@@ -144,7 +144,10 @@ export function AppShell({
       <nav className="space-y-2">
         {navByRole[role].map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href !== "/profile" && pathname.startsWith(`${item.href}/`));
+          const isSectionRoot = item.href === `/${role}`;
+          const isActive = isSectionRoot
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <Link

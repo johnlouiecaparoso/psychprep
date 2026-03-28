@@ -159,19 +159,25 @@ export function FlashcardDeck({
             <Badge variant="outline">{current.topic}</Badge>
             {weakTopics.includes(current.topic) ? <Badge>Weak area</Badge> : null}
           </div>
-          <button type="button" onClick={() => setFlipped((value) => !value)} className="flex min-h-[320px] w-full flex-col justify-between rounded-[28px] bg-gradient-to-br from-slate-50 to-emerald-50 p-8 text-left">
+          <button
+            type="button"
+            onClick={() => setFlipped((value) => !value)}
+            className="grid min-h-[320px] w-full grid-rows-[auto_1fr] rounded-[28px] border border-border bg-gradient-to-br from-emerald-50 via-background to-amber-50 p-8 text-left text-foreground transition-colors dark:from-emerald-950/40 dark:via-slate-900 dark:to-amber-950/30"
+          >
             <div className="flex items-center justify-between">
               <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{flipped ? "Answer" : "Quick prompt"}</span>
               <RotateCcw className="h-4 w-4 text-muted-foreground" />
             </div>
-            <div>
+            <div className="flex items-center justify-center text-center">
               {flipped ? (
                 <>
-                  <h3 className="text-3xl font-semibold">{buildShortAnswer(correctChoice?.choice_text ?? "No answer available")}</h3>
-                  <p className="mt-4 text-sm text-muted-foreground">Correct option: {correctChoice?.choice_key ?? "-"}</p>
+                  <div>
+                    <h3 className="text-3xl font-semibold">{buildShortAnswer(correctChoice?.choice_text ?? "No answer available")}</h3>
+                    <p className="mt-4 text-sm text-muted-foreground">Correct option: {correctChoice?.choice_key ?? "-"}</p>
+                  </div>
                 </>
               ) : (
-                <h3 className="mt-3 text-2xl font-semibold">{buildFlashcardPrompt(current.question_text)}</h3>
+                <h3 className="text-2xl font-semibold">{buildFlashcardPrompt(current.question_text)}</h3>
               )}
             </div>
           </button>
