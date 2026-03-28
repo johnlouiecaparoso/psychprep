@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { inferChapterLabel, stripChapterFromTopic } from "@/lib/review-content";
 import type { ParsedImportRow, ReviewQuestion, StudyTechnique } from "@/lib/types";
 
 type FlashcardItem = ParsedImportRow | ReviewQuestion;
@@ -54,6 +55,7 @@ export function FlashcardDeck({
   studyTechnique?: StudyTechnique;
 }) {
   const [selectedSubject, setSelectedSubject] = React.useState("all");
+  const [selectedChapter, setSelectedChapter] = React.useState("all");
   const [selectedTopic, setSelectedTopic] = React.useState("all");
   const [shuffleMode, setShuffleMode] = React.useState(studyTechnique === "active_recall");
   const [weakOnly, setWeakOnly] = React.useState(studyTechnique === "active_recall" && weakTopics.length > 0);
@@ -63,19 +65,30 @@ export function FlashcardDeck({
   const [reviewState, setReviewState] = React.useState<Record<string, ReviewMark>>({});
 
   const subjects = React.useMemo(() => ["all", ...Array.from(new Set(cards.map((card) => card.subject)))], [cards]);
+  const chapters = React.useMemo(() => {
+    const filteredBySubject = selectedSubject === "all" ? cards : cards.filter((card) => card.subject === selectedSubject);
+    return [
+      "all",
+      ...Array.from(new Set(filteredBySubject.map((card) => inferChapterLabel(card.topic) ?? "General")))
+    ];
+  }, [cards, selectedSubject]);
   const topics = React.useMemo(() => {
     const filteredBySubject = selectedSubject === "all" ? cards : cards.filter((card) => card.subject === selectedSubject);
-    return ["all", ...Array.from(new Set(filteredBySubject.map((card) => card.topic)))];
-  }, [cards, selectedSubject]);
+    const filteredByChapter = selectedChapter === "all"
+      ? filteredBySubject
+      : filteredBySubject.filter((card) => (inferChapterLabel(card.topic) ?? "General") === selectedChapter);
+    return ["all", ...Array.from(new Set(filteredByChapter.map((card) => stripChapterFromTopic(card.topic))))];
+  }, [cards, selectedChapter, selectedSubject]);
 
   const filteredCards = React.useMemo(() => {
     return cards.filter((card) => {
       const subjectMatch = selectedSubject === "all" || card.subject === selectedSubject;
-      const topicMatch = selectedTopic === "all" || card.topic === selectedTopic;
+      const chapterMatch = selectedChapter === "all" || (inferChapterLabel(card.topic) ?? "General") === selectedChapter;
+      const topicMatch = selectedTopic === "all" || stripChapterFromTopic(card.topic) === selectedTopic;
       const weakMatch = !weakOnly || weakTopics.includes(card.topic);
-      return subjectMatch && topicMatch && weakMatch;
+      return subjectMatch && chapterMatch && topicMatch && weakMatch;
     });
-  }, [cards, selectedSubject, selectedTopic, weakOnly, weakTopics]);
+  }, [cards, selectedChapter, selectedSubject, selectedTopic, weakOnly, weakTopics]);
 
   React.useEffect(() => {
     const nextCards = shuffleMode ? shuffleItems(filteredCards) : filteredCards;
@@ -128,9 +141,12 @@ export function FlashcardDeck({
           <CardTitle>Flashcards</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-4">
-            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedChapter("all"); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {subjects.map((subject) => <option key={subject} value={subject}>{subject === "all" ? "All subjects" : subject}</option>)}
+            </select>
+            <select value={selectedChapter} onChange={(event) => { setSelectedChapter(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
+              {chapters.map((chapter) => <option key={chapter} value={chapter}>{chapter === "all" ? "All chapters" : chapter}</option>)}
             </select>
             <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {topics.map((topic) => <option key={topic} value={topic}>{topic === "all" ? "All topics" : topic}</option>)}
@@ -159,9 +175,12 @@ export function FlashcardDeck({
                 ? "Pomodoro mode works best when you finish one uninterrupted card round before taking a short break."
                 : "Practice Test mode lets you warm up on cards before taking a full timed set."}
           </div>
-          <div className="grid gap-4 md:grid-cols-4">
-            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedChapter("all"); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {subjects.map((subject) => <option key={subject} value={subject}>{subject === "all" ? "All subjects" : subject}</option>)}
+            </select>
+            <select value={selectedChapter} onChange={(event) => { setSelectedChapter(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
+              {chapters.map((chapter) => <option key={chapter} value={chapter}>{chapter === "all" ? "All chapters" : chapter}</option>)}
             </select>
             <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {topics.map((topic) => <option key={topic} value={topic}>{topic === "all" ? "All topics" : topic}</option>)}
@@ -174,13 +193,14 @@ export function FlashcardDeck({
           <Progress value={progress} />
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">{current.subject}</Badge>
-            <Badge variant="outline">{current.topic}</Badge>
+            <Badge variant="outline">{inferChapterLabel(current.topic) ?? "General"}</Badge>
+            <Badge variant="outline">{stripChapterFromTopic(current.topic)}</Badge>
             {weakTopics.includes(current.topic) ? <Badge>Weak area</Badge> : null}
           </div>
           <button
             type="button"
             onClick={() => setFlipped((value) => !value)}
-            className="grid min-h-[320px] w-full grid-rows-[auto_1fr] rounded-[28px] border border-border bg-gradient-to-br from-emerald-50 via-background to-amber-50 p-8 text-left text-foreground transition-colors dark:from-emerald-950/40 dark:via-slate-900 dark:to-amber-950/30"
+            className="grid min-h-[240px] w-full grid-rows-[auto_1fr] rounded-[24px] border border-border bg-gradient-to-br from-emerald-50 via-background to-amber-50 p-4 text-left text-foreground transition-colors sm:min-h-[320px] sm:rounded-[28px] sm:p-8 dark:from-emerald-950/40 dark:via-slate-900 dark:to-amber-950/30"
           >
             <div className="flex items-center justify-between">
               <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{flipped ? "Answer" : "Quick prompt"}</span>
@@ -190,20 +210,20 @@ export function FlashcardDeck({
               {flipped ? (
                 <>
                   <div>
-                    <h3 className="text-3xl font-semibold">{buildShortAnswer(correctChoice?.choice_text ?? "No answer available")}</h3>
+                    <h3 className="text-2xl font-semibold sm:text-3xl">{buildShortAnswer(correctChoice?.choice_text ?? "No answer available")}</h3>
                     <p className="mt-4 text-sm text-muted-foreground">Correct option: {correctChoice?.choice_key ?? "-"}</p>
                   </div>
                 </>
               ) : (
-                <h3 className="text-2xl font-semibold">{buildFlashcardPrompt(current.question_text)}</h3>
+                <h3 className="text-xl font-semibold sm:text-2xl">{buildFlashcardPrompt(current.question_text)}</h3>
               )}
             </div>
           </button>
 
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" onClick={() => markCard("again")}>Again</Button>
-            <Button variant="secondary" onClick={() => markCard("hard")}>Hard</Button>
-            <Button onClick={() => markCard("know")}>Know</Button>
+          <div className="grid gap-3 sm:flex sm:flex-wrap">
+            <Button className="w-full sm:w-auto" variant="outline" onClick={() => markCard("again")}>Again</Button>
+            <Button className="w-full sm:w-auto" variant="secondary" onClick={() => markCard("hard")}>Hard</Button>
+            <Button className="w-full sm:w-auto" onClick={() => markCard("know")}>Know</Button>
           </div>
         </CardContent>
       </Card>

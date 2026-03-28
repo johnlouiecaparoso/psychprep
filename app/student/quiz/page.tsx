@@ -6,7 +6,7 @@ import { getMockExamSummaries } from "@/lib/supabase/review-service";
 
 export default async function QuizPage() {
   const supabase = await createClient();
-  const exams = await getMockExamSummaries(supabase);
+  const exams = await getMockExamSummaries(supabase, "quiz");
 
   return (
     <AppShell
@@ -18,7 +18,7 @@ export default async function QuizPage() {
         <Card>
           <CardContent className="p-6">
             <p className="font-semibold">No quiz source available yet.</p>
-            <p className="mt-2 text-sm text-muted-foreground">Ask an instructor to upload questions first.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Ask an admin to upload quiz sets first.</p>
           </CardContent>
         </Card>
       ) : (

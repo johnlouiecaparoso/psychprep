@@ -38,4 +38,29 @@ export class StudyTechniqueService {
       throw error;
     }
   }
+
+  async clearCurrentTechnique() {
+    const {
+      data: { user },
+      error: userError
+    } = await this.client.auth.getUser();
+
+    if (userError) {
+      throw userError;
+    }
+
+    if (!user) {
+      return;
+    }
+
+    const { error } = await this.client
+      .from("user_technique_selections")
+      .update({ is_current: false })
+      .eq("user_id", user.id)
+      .eq("is_current", true);
+
+    if (error) {
+      throw error;
+    }
+  }
 }

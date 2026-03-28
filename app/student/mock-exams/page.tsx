@@ -6,7 +6,7 @@ import { getMockExamSummaries } from "@/lib/supabase/review-service";
 
 export default async function MockExamsPage() {
   const supabase = await createClient();
-  const exams = await getMockExamSummaries(supabase);
+  const exams = await getMockExamSummaries(supabase, "exam");
 
   return (
     <AppShell
@@ -19,7 +19,7 @@ export default async function MockExamsPage() {
           <CardContent className="p-6">
             <p className="font-semibold">No mock exams available yet.</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Ask an instructor or admin to upload a CSV first so exams can appear here.
+              Ask an admin to upload an exam CSV first so exam sets can appear here.
             </p>
           </CardContent>
         </Card>

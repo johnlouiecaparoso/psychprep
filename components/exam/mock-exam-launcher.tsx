@@ -12,7 +12,9 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
   const router = useRouter();
   const [durations, setDurations] = React.useState<Record<string, string>>({});
   const [shuffle, setShuffle] = React.useState<Record<string, boolean>>({});
-  const [selectedSubject, setSelectedSubject] = React.useState<string | null>(null);
+  const [selectedSubject, setSelectedSubject] = React.useState("all");
+  const [selectedChapter, setSelectedChapter] = React.useState("all");
+  const [selectedTopic, setSelectedTopic] = React.useState("all");
   const [openExamId, setOpenExamId] = React.useState<string | null>(null);
   const { downloadState, availableOffline, downloadPack, openOfflinePack } = useOfflineStudyPack(exams);
   const examsBySubject = React.useMemo(() => {
@@ -28,10 +30,11 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
       subject,
       exams: subjectExams.map((exam, index) => ({
         ...exam,
-        setLabel: `Chapter ${index + 1}`
+        setLabel: exam.chapter ?? `Chapter ${index + 1}`
       }))
     }));
   }, [exams]);
+  const subjectOptions = React.useMemo(() => ["all", ...examsBySubject.map((group) => group.subject)], [examsBySubject]);
   const activeSubject = React.useMemo(
     () => examsBySubject.find((group) => group.subject === selectedSubject) ?? null,
     [examsBySubject, selectedSubject]
@@ -39,7 +42,29 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
 
   React.useEffect(() => {
     setOpenExamId(null);
+    setSelectedChapter("all");
+    setSelectedTopic("all");
   }, [selectedSubject]);
+
+  const chapterOptions = React.useMemo(() => {
+    if (!activeSubject) {
+      return ["all"];
+    }
+
+    return ["all", ...Array.from(new Set(activeSubject.exams.map((exam) => exam.chapter ?? exam.setLabel)))];
+  }, [activeSubject]);
+
+  const topicOptions = React.useMemo(() => {
+    if (!activeSubject) {
+      return ["all"];
+    }
+
+    const source = selectedChapter === "all"
+      ? activeSubject.exams
+      : activeSubject.exams.filter((exam) => (exam.chapter ?? exam.setLabel) === selectedChapter);
+
+    return ["all", ...Array.from(new Set(source.flatMap((exam) => exam.topics)))];
+  }, [activeSubject, selectedChapter]);
 
   function startExam(exam: MockExamSummary) {
     const durationMinutes = Math.max(5, Number.parseInt(durations[exam.id] ?? "45", 10) || 45).toString();
@@ -57,8 +82,30 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
 
   if (!activeSubject) {
     return (
-      <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {examsBySubject.map(({ subject, exams: subjectExams }) => (
+      <section className="space-y-6">
+        <div className="grid gap-3 md:grid-cols-3">
+          <select
+            value={selectedSubject}
+            onChange={(event) => setSelectedSubject(event.target.value)}
+            className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+          >
+            {subjectOptions.map((subject) => (
+              <option key={subject} value={subject}>
+                {subject === "all" ? "All subjects" : subject}
+              </option>
+            ))}
+          </select>
+          <select value="all" disabled className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-muted-foreground">
+            <option>Choose a subject first</option>
+          </select>
+          <select value="all" disabled className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-muted-foreground">
+            <option>Choose a chapter first</option>
+          </select>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {examsBySubject
+          .filter(({ subject }) => selectedSubject === "all" || subject === selectedSubject)
+          .map(({ subject, exams: subjectExams }) => (
           <button
             key={subject}
             type="button"
@@ -71,6 +118,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
             </p>
           </button>
         ))}
+        </div>
       </section>
     );
   }
@@ -78,7 +126,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
   return (
     <section className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="outline" onClick={() => setSelectedSubject(null)}>
+        <Button variant="outline" onClick={() => setSelectedSubject("all")}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to subjects
         </Button>
@@ -88,8 +136,53 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
         </div>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-3">
+        <select
+          value={selectedSubject}
+          onChange={(event) => setSelectedSubject(event.target.value)}
+          className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+        >
+          {subjectOptions.map((subject) => (
+            <option key={subject} value={subject}>
+              {subject === "all" ? "All subjects" : subject}
+            </option>
+          ))}
+        </select>
+        <select
+          value={selectedChapter}
+          onChange={(event) => {
+            setSelectedChapter(event.target.value);
+            setSelectedTopic("all");
+          }}
+          className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+        >
+          {chapterOptions.map((chapter) => (
+            <option key={chapter} value={chapter}>
+              {chapter === "all" ? "All chapters" : chapter}
+            </option>
+          ))}
+        </select>
+        <select
+          value={selectedTopic}
+          onChange={(event) => setSelectedTopic(event.target.value)}
+          className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+        >
+          {topicOptions.map((topic) => (
+            <option key={topic} value={topic}>
+              {topic === "all" ? "All topics" : topic}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="grid gap-6 xl:grid-cols-2">
-        {activeSubject.exams.map((exam) => {
+        {activeSubject.exams
+          .filter((exam) => {
+            const chapterMatch = selectedChapter === "all" || (exam.chapter ?? exam.setLabel) === selectedChapter;
+            const topicMatch = selectedTopic === "all" || exam.topics.includes(selectedTopic);
+            return chapterMatch && topicMatch;
+          })
+          .map((exam) => {
           const selectedDuration = durations[exam.id] ?? "45";
           const isShuffled = shuffle[exam.id] ?? false;
           const isOpen = openExamId === exam.id;
@@ -116,6 +209,13 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>{exam.questionCount} questions</span>
                   <span>{exam.topicCount} topics</span>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  {exam.topics.slice(0, 4).map((topic) => (
+                    <span key={`${exam.id}-${topic}`} className="rounded-full bg-muted px-3 py-1">
+                      {topic}
+                    </span>
+                  ))}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Exam time in minutes</label>

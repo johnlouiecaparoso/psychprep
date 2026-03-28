@@ -35,16 +35,11 @@ type NavItem = {
 const navByRole: Record<Role, NavItem[]> = {
   admin: [
     { href: "/admin", label: "Dashboard", icon: ShieldCheck },
-    { href: "/instructor/upload", label: "Question Imports", icon: FileSpreadsheet },
-    { href: "/instructor/question-bank", label: "Question Bank", icon: Layers3 },
-    { href: "/instructor/reviewers", label: "Reviewer Library", icon: BookOpenText },
-    { href: "/profile", label: "Profile", icon: UserRound }
-  ],
-  instructor: [
-    { href: "/instructor", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/instructor/upload", label: "Upload CSV", icon: FileSpreadsheet },
-    { href: "/instructor/question-bank", label: "Question Bank", icon: Layers3 },
-    { href: "/instructor/reviewers", label: "Reviewer PDFs", icon: BookOpenText },
+    { href: "/admin/imports/exams", label: "Exam Imports", icon: FileSpreadsheet },
+    { href: "/admin/imports/quizzes", label: "Quiz Imports", icon: Layers3 },
+    { href: "/admin/imports/flashcards", label: "Flashcard Imports", icon: Layers3 },
+    { href: "/admin/question-bank", label: "Question Bank", icon: Layers3 },
+    { href: "/admin/reviewers", label: "Reviewer Library", icon: BookOpenText },
     { href: "/profile", label: "Profile", icon: UserRound }
   ],
   student: [

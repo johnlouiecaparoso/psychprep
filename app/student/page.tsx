@@ -60,12 +60,7 @@ export default function StudentPage() {
         setStudyOverview(studyOverviewData);
         setAvailableSubjects(subjectsData);
         setStudyTechniques(techniquesData);
-        const fallbackTechnique = currentTechniqueData
-          ? currentTechniqueData
-          : techniquesData[0]
-            ? { ...techniquesData[0], selected_at: "" }
-            : null;
-        setCurrentTechnique(fallbackTechnique);
+        setCurrentTechnique(currentTechniqueData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load dashboard data");
         console.error("Dashboard data fetch error:", err);
@@ -79,7 +74,7 @@ export default function StudentPage() {
 
   const readiness = getReadiness(readinessScore);
   const role = userRole === "student" ? "student" : "student";
-  const activeTechnique = currentTechnique ?? studyTechniques[0] ?? null;
+  const activeTechnique = currentTechnique;
 
   async function handleApplyTechnique(technique: StudyTechnique) {
     if (!userId) {
@@ -98,6 +93,27 @@ export default function StudentPage() {
       setCurrentTechnique(updatedTechnique);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to apply study technique");
+    } finally {
+      setApplyingTechnique(null);
+    }
+  }
+
+  async function handleClearTechnique() {
+    if (!userId) {
+      return;
+    }
+
+    try {
+      setApplyingTechnique("practice_test");
+      const studyTechniqueService = new StudyTechniqueService();
+      await studyTechniqueService.clearCurrentTechnique();
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("psychboard-active-study-technique");
+        window.dispatchEvent(new CustomEvent("study-technique-changed", { detail: { technique: "practice_test" } }));
+      }
+      setCurrentTechnique(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to clear study technique");
     } finally {
       setApplyingTechnique(null);
     }
@@ -139,6 +155,7 @@ export default function StudentPage() {
         availableExams={studyOverview?.availableExams ?? 0}
         applyingTechnique={applyingTechnique}
         onApply={handleApplyTechnique}
+        onClear={handleClearTechnique}
       />
 
       <section className="grid gap-6 xl:grid-cols-[1fr_320px]">
@@ -147,7 +164,7 @@ export default function StudentPage() {
           <CardContent className="space-y-4">
             <p className="text-2xl font-semibold">{studyOverview?.recommendedFocus ?? "Start with a mock exam"}</p>
             <p className="text-sm text-muted-foreground">
-              Recommended focus based on your weakest available topic, recent study history, and your current {activeTechnique?.name ?? "study"} mode.
+              Recommended focus based on your weakest available topic, recent study history, and your current {activeTechnique?.name ?? "default review"} mode.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl bg-muted/40 p-4">

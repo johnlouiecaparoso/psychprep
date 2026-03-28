@@ -1,4 +1,4 @@
-import type { ImportErrorRecord, ParsedImportRow } from "@/lib/types";
+import type { ImportErrorRecord, ImportType, ParsedImportRow } from "@/lib/types";
 import type { createClient } from "@/lib/supabase/server";
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -7,34 +7,51 @@ function getBaseFileName(fileName: string) {
   return fileName.replace(/\.[^.]+$/, "").trim() || "Mock Exam";
 }
 
+function getImportPrefix(importType: ImportType) {
+  switch (importType) {
+    case "quiz":
+      return "[QUIZ]";
+    case "flashcard":
+      return "[FLASHCARD]";
+    case "exam":
+    default:
+      return "[EXAM]";
+  }
+}
+
 function buildMockExamTitle({
   fileName,
   subject,
   hasMultipleSubjects,
-  uploadId
+  uploadId,
+  importType
 }: {
   fileName: string;
   subject: string;
   hasMultipleSubjects: boolean;
   uploadId: string;
+  importType: ImportType;
 }) {
   const shortUploadId = uploadId.slice(0, 8);
   const base = getBaseFileName(fileName);
+  const prefix = getImportPrefix(importType);
   return hasMultipleSubjects
-    ? `${base} - ${subject} [${shortUploadId}]`
-    : `${base} [${shortUploadId}]`;
+    ? `${prefix} ${base} - ${subject} [${shortUploadId}]`
+    : `${prefix} ${base} [${shortUploadId}]`;
 }
 
 export async function persistUploadBatch({
   supabase,
   uploadedBy,
   fileName,
+  importType,
   validRows,
   errors
 }: {
   supabase: ServerClient;
   uploadedBy: string;
   fileName: string;
+  importType: ImportType;
   validRows: ParsedImportRow[];
   errors: ImportErrorRecord[];
 }) {
@@ -84,6 +101,7 @@ export async function persistUploadBatch({
         fileName,
         subject: row.subject,
         uploadId: upload.id,
+        importType,
         hasMultipleSubjects,
         mockExamCache
       });
@@ -191,6 +209,7 @@ async function createMockExamForUpload({
   fileName,
   subject,
   uploadId,
+  importType,
   hasMultipleSubjects,
   mockExamCache
 }: {
@@ -199,6 +218,7 @@ async function createMockExamForUpload({
   fileName: string;
   subject: string;
   uploadId: string;
+  importType: ImportType;
   hasMultipleSubjects: boolean;
   mockExamCache: Map<string, string>;
 }) {
@@ -212,7 +232,8 @@ async function createMockExamForUpload({
     fileName,
     subject,
     hasMultipleSubjects,
-    uploadId
+    uploadId,
+    importType
   });
 
   const { data, error } = await supabase

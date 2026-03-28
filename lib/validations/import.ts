@@ -10,5 +10,16 @@ export const csvRowSchema = z.object({
   Explanation: z.string().trim().default(""),
   Difficulty: z.enum(["easy", "medium", "hard"]),
   Subject: z.string().trim().min(1, "Subject is required."),
+  Chapter: z.string().trim().min(1, "Chapter is required."),
+  Topic: z.string().trim().min(1, "Topic is required.")
+});
+
+export const flashcardCsvRowSchema = z.object({
+  Front: z.string().trim().min(1, "Front is required."),
+  Back: z.string().trim().min(1, "Back is required."),
+  Explanation: z.string().trim().default(""),
+  Difficulty: z.enum(["easy", "medium", "hard"]),
+  Subject: z.string().trim().min(1, "Subject is required."),
+  Chapter: z.string().trim().min(1, "Chapter is required."),
   Topic: z.string().trim().min(1, "Topic is required.")
 });

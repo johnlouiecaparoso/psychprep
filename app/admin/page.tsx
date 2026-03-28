@@ -3,18 +3,32 @@ import { PerformanceChart } from "@/components/charts/performance-chart";
 import { WeakTopicsChart } from "@/components/charts/weak-topics-chart";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ContentResetPanel } from "@/components/admin/content-reset-panel";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { detectImportTypeFromTitle } from "@/lib/review-content";
 
 export default async function AdminPage() {
   const supabase = await createClient();
 
-  const [studentsRes, questionsRes, uploadsRes, failedImportsRes, attemptsRes, answersRes] = await Promise.all([
+  const [studentsRes, studentProfilesRes, questionsRes, uploadsRes, failedImportsRes, attemptsRes, answersRes, mockExamsRes, reviewersRes] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student"),
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, role, created_at")
+      .eq("role", "student")
+      .order("created_at", { ascending: false })
+      .limit(12),
     supabase.from("exam_questions").select("id", { count: "exact", head: true }),
     supabase.from("uploads").select("id", { count: "exact", head: true }),
     supabase.from("upload_errors").select("id", { count: "exact", head: true }),
     supabase.from("exam_attempts").select("score, mock_exams(title, subjects(name))").not("submitted_at", "is", null),
-    supabase.from("exam_answers").select("is_correct, exam_questions(topics(name))")
+    supabase.from("exam_answers").select("is_correct, exam_questions(topics(name))"),
+    supabase.from("mock_exams").select("id, title"),
+    supabase.from("review_materials").select("id", { count: "exact", head: true })
   ]);
 
   const subjectMap = new Map<string, number[]>();
@@ -58,9 +72,21 @@ export default async function AdminPage() {
   const stats = [
     { label: "Total students", value: String(studentsRes.count ?? 0), helper: "Registered student accounts" },
     { label: "Total questions", value: String(questionsRes.count ?? 0), helper: "Imported into the question bank" },
-    { label: "Total uploads", value: String(uploadsRes.count ?? 0), helper: "Instructor and admin import batches" },
+    { label: "Total uploads", value: String(uploadsRes.count ?? 0), helper: "Admin import batches" },
     { label: "Failed imports", value: String(failedImportsRes.count ?? 0), helper: "Rows rejected during validation" }
   ];
+
+  const contentCounts = {
+    exam: 0,
+    quiz: 0,
+    flashcard: 0,
+    reviewer: reviewersRes.count ?? 0
+  };
+
+  (mockExamsRes.data ?? []).forEach((exam: any) => {
+    const type = detectImportTypeFromTitle(exam.title ?? "");
+    contentCounts[type] += 1;
+  });
 
   return (
     <AppShell
@@ -73,6 +99,64 @@ export default async function AdminPage() {
           <StatCard key={stat.label} {...stat} />
         ))}
       </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Content imports</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Use separate import flows for exams, quizzes, flashcards, and reviewer PDFs so students only see the right content in each dashboard.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/admin/imports/exams" className={buttonVariants()}>
+              Exam imports
+            </Link>
+            <Link href="/admin/imports/quizzes" className={cn(buttonVariants({ variant: "outline" }))}>
+              Quiz imports
+            </Link>
+            <Link href="/admin/imports/flashcards" className={cn(buttonVariants({ variant: "outline" }))}>
+              Flashcard imports
+            </Link>
+            <Link href="/admin/reviewers" className={cn(buttonVariants({ variant: "outline" }))}>
+              Reviewer PDFs
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+      <ContentResetPanel counts={contentCounts} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent student signups</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(studentProfilesRes.data ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No student accounts found yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Signed up</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(studentProfilesRes.data ?? []).map((student: any) => (
+                  <TableRow key={student.id}>
+                    <TableCell>{student.full_name || "No name yet"}</TableCell>
+                    <TableCell>{student.email || "-"}</TableCell>
+                    <TableCell className="capitalize">{student.role || "student"}</TableCell>
+                    <TableCell>
+                      {student.created_at ? new Date(student.created_at).toLocaleString() : "-"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
       <section className="grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>

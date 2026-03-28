@@ -7,7 +7,7 @@ import type { StudyTechnique } from "@/lib/types";
 
 export default async function FlashcardsPage() {
   const supabase = await createClient();
-  const cards = await getQuestionBankRows(supabase);
+  const cards = await getQuestionBankRows(supabase, "flashcard");
   const {
     data: { user }
   } = await supabase.auth.getUser();

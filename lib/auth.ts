@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Profile, Role } from "@/lib/types";
+import type { LegacyRole, Profile, Role } from "@/lib/types";
+
+function normalizeRole(role: LegacyRole | null | undefined): Role {
+  return role === "instructor" ? "admin" : role === "admin" ? "admin" : "student";
+}
 
 export async function getUserProfile(): Promise<Profile | null> {
   const supabase = await createClient();
@@ -19,10 +23,15 @@ export async function getUserProfile(): Promise<Profile | null> {
     .maybeSingle();
 
   if (profile) {
-    return profile;
+    return {
+      ...profile,
+      role: normalizeRole(profile.role as LegacyRole)
+    };
   }
 
-  const fallbackRole = typeof user.user_metadata?.role === "string" ? (user.user_metadata.role as Role) : "student";
+  const fallbackRole = normalizeRole(
+    typeof user.user_metadata?.role === "string" ? (user.user_metadata.role as LegacyRole) : "student"
+  );
 
   return {
     id: user.id,

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet } from "lucide-react";
 import { parseExamFile, validateImportRows } from "@/lib/csv/parser";
-import type { ParsedImportRow } from "@/lib/types";
+import type { ImportType, ParsedImportRow } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,7 +14,17 @@ type PreviewState = {
   summary: { totalRows: number; successRows: number; failedRows: number };
 } | null;
 
-export function CsvImportPanel() {
+export function CsvImportPanel({
+  importType = "exam",
+  title,
+  description,
+  fieldHint
+}: {
+  importType?: ImportType;
+  title?: string;
+  description?: string;
+  fieldHint?: string;
+}) {
   const [preview, setPreview] = React.useState<PreviewState>(null);
   const [errorMessage, setErrorMessage] = React.useState("");
   const [isParsing, setIsParsing] = React.useState(false);
@@ -36,7 +46,7 @@ export function CsvImportPanel() {
     try {
       setFileName(file.name);
       const rows = await parseExamFile(file);
-      const result = validateImportRows(rows);
+      const result = validateImportRows(rows, importType);
       setPreview({
         validRows: result.validRows,
         errors: result.errors,
@@ -67,6 +77,7 @@ export function CsvImportPanel() {
         },
         body: JSON.stringify({
           fileName,
+          importType,
           validRows: preview.validRows,
           errors: preview.errors
         })
@@ -90,9 +101,9 @@ export function CsvImportPanel() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Upload mock exam file</CardTitle>
+          <CardTitle>{title ?? "Upload import file"}</CardTitle>
           <CardDescription>
-            Accepts `.csv`, `.xlsx`, and `.xls` files using the required column structure.
+            {description ?? "Accepts `.csv`, `.xlsx`, and `.xls` files using the required column structure."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -101,7 +112,7 @@ export function CsvImportPanel() {
             <div>
               <p className="font-medium">Choose an Excel or CSV file</p>
               <p className="text-sm text-muted-foreground">
-                Question, 4 choices, correct answer, explanation, difficulty, subject, topic
+                {fieldHint ?? "Question, 4 choices, correct answer, explanation, difficulty, subject, chapter, topic"}
               </p>
             </div>
             <input className="hidden" type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} />

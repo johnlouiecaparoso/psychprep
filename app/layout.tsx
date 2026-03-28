@@ -13,7 +13,7 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: `${APP_NAME} | Psychology Board Review Platform`,
-  description: "Modern board exam review platform for psychology students, instructors, and admins.",
+  description: "Modern board exam review platform for psychology students and admins.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

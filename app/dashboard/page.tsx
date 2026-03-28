@@ -11,8 +11,6 @@ export default async function DashboardRedirectPage() {
   switch (profile.role) {
     case "admin":
       redirect("/admin");
-    case "instructor":
-      redirect("/instructor");
     case "student":
     default:
       redirect("/student");

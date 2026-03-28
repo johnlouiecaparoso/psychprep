@@ -33,7 +33,7 @@ export default function LandingPage() {
               Psychology board exam reviewer
             </p>
             <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">
-              Modern review workflows for admins, instructors, and students.
+              Modern review workflows for admins and students.
             </h1>
             <p className="mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
               Build confidence with clean dashboards, strict question imports, mobile-ready mock exams,

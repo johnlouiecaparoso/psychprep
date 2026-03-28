@@ -1,5 +1,7 @@
 import type { AttemptResult, MockExamSummary, ReviewQuestion } from "@/lib/types";
 import type { createClient } from "@/lib/supabase/server";
+import { detectImportTypeFromTitle, inferChapterLabel, stripChapterFromTopic, stripImportPrefix } from "@/lib/review-content";
+import type { ImportType } from "@/lib/types";
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -22,33 +24,55 @@ function mapQuestionRow(row: any): ReviewQuestion {
   };
 }
 
-export async function getMockExamSummaries(supabase: ServerClient): Promise<MockExamSummary[]> {
+export async function getMockExamSummaries(
+  supabase: ServerClient,
+  contentType: ImportType = "exam"
+): Promise<MockExamSummary[]> {
   const { data, error } = await supabase
     .from("mock_exams")
-    .select("id, title, subjects(name), exam_questions(id, topic_id)")
+    .select("id, title, subjects(name), exam_questions(id, topic_id, topics(name))")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
 
-  return (data ?? []).map((exam: any) => ({
-    id: exam.id,
-    title: exam.title,
-    subject: exam.subjects?.name ?? "Unassigned Subject",
-    questionCount: exam.exam_questions?.length ?? 0,
-    topicCount: new Set((exam.exam_questions ?? []).map((question: any) => question.topic_id)).size
-  }));
+  return (data ?? [])
+    .filter((exam: any) => detectImportTypeFromTitle(exam.title ?? "") === contentType)
+    .map((exam: any) => {
+      const topicNames = Array.from(
+        new Set<string>(
+          (exam.exam_questions ?? [])
+            .map((question: any) => question.topics?.name)
+            .filter((topicName: string | null | undefined): topicName is string => Boolean(topicName))
+        )
+      );
+      const normalizedTitle = stripImportPrefix(exam.title ?? "");
+      return {
+        id: exam.id,
+        title: normalizedTitle,
+        subject: exam.subjects?.name ?? "Unassigned Subject",
+        chapter: inferChapterLabel(topicNames[0] ?? normalizedTitle),
+        topics: topicNames.map((topic) => stripChapterFromTopic(topic)),
+        questionCount: exam.exam_questions?.length ?? 0,
+        topicCount: new Set((exam.exam_questions ?? []).map((question: any) => question.topic_id)).size
+      };
+    });
 }
 
-export async function getQuestionBankRows(supabase: ServerClient): Promise<ReviewQuestion[]> {
+export async function getQuestionBankRows(
+  supabase: ServerClient,
+  contentType?: ImportType
+): Promise<ReviewQuestion[]> {
   const { data, error } = await supabase
     .from("exam_questions")
     .select(
-      "id, mock_exam_id, question_text, explanation, difficulty, subjects(name), topics(name), exam_choices(choice_key, choice_text, is_correct)"
+      "id, mock_exam_id, question_text, explanation, difficulty, subjects(name), topics(name), exam_choices(choice_key, choice_text, is_correct), mock_exams(title)"
     )
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return (data ?? []).map(mapQuestionRow);
+  return (data ?? [])
+    .filter((row: any) => !contentType || detectImportTypeFromTitle(row.mock_exams?.title ?? "") === contentType)
+    .map(mapQuestionRow);
 }
 
 export async function getMockExamQuestions(supabase: ServerClient, examId: string): Promise<ReviewQuestion[]> {

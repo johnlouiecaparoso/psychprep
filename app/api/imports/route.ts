@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { persistUploadBatch } from "@/lib/supabase/import-service";
-import type { ImportErrorRecord, ParsedImportRow } from "@/lib/types";
+import type { ImportErrorRecord, ImportType, ParsedImportRow } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as {
       fileName: string;
+      importType: ImportType;
       validRows: ParsedImportRow[];
       errors: ImportErrorRecord[];
     };
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
       supabase,
       uploadedBy: user.id,
       fileName: body.fileName,
+      importType: body.importType,
       validRows: body.validRows,
       errors: body.errors
     });

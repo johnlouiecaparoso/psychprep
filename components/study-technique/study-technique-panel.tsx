@@ -15,7 +15,8 @@ export function StudyTechniquePanel({
   weakTopicNames,
   availableExams,
   applyingTechnique,
-  onApply
+  onApply,
+  onClear
 }: {
   techniques: StudyTechniqueRecord[];
   currentTechnique: CurrentStudyTechnique | null;
@@ -23,11 +24,13 @@ export function StudyTechniquePanel({
   availableExams: number;
   applyingTechnique: StudyTechnique | null;
   onApply: (technique: StudyTechnique) => Promise<void> | void;
+  onClear: () => Promise<void> | void;
 }) {
-  const activeTechnique = currentTechnique ?? techniques[0] ?? null;
-  const tasks = buildTechniqueTasks((activeTechnique?.slug ?? "practice_test") as StudyTechnique, weakTopicNames);
+  const activeTechnique = currentTechnique;
+  const activeSlug = (activeTechnique?.slug ?? "practice_test") as StudyTechnique;
+  const tasks = buildTechniqueTasks(activeSlug, weakTopicNames);
 
-  if (!activeTechnique) {
+  if (techniques.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -55,29 +58,36 @@ export function StudyTechniquePanel({
               <CheckCircle2 className="h-4 w-4" />
               Current mode
             </div>
-            <p className="mt-3 text-2xl font-semibold">{activeTechnique.name}</p>
-            <p className="mt-2 text-sm">{activeTechnique.impact_summary}</p>
+            <p className="mt-3 text-2xl font-semibold">{activeTechnique?.name ?? "No active technique"}</p>
+            <p className="mt-2 text-sm">
+              {activeTechnique?.impact_summary ?? "Study sessions will use the normal dashboard flow until you apply a technique."}
+            </p>
+            {activeTechnique ? (
+              <Button className="mt-4" variant="outline" onClick={() => onClear()} disabled={applyingTechnique !== null}>
+                Cancel current technique
+              </Button>
+            ) : null}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
             {techniques.map((technique) => {
-              const isActive = technique.id === activeTechnique.id;
+              const isCurrent = activeTechnique ? technique.id === activeTechnique.id : false;
 
               return (
-                <div key={technique.id} className={`rounded-2xl border p-4 ${isActive ? "border-primary bg-primary/5" : "border-border bg-muted/20"}`}>
+                <div key={technique.id} className={`rounded-2xl border p-4 ${isCurrent ? "border-primary bg-primary/5" : "border-border bg-muted/20"}`}>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-lg font-semibold">{technique.name}</p>
-                    {isActive ? <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">Active</span> : null}
+                    {isCurrent ? <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">Active</span> : null}
                   </div>
                   <p className="mt-3 text-sm text-muted-foreground">{technique.description}</p>
                   <p className="mt-3 text-sm">{technique.impact_summary}</p>
                   <Button
                     className="mt-4 w-full"
-                    variant={isActive ? "secondary" : "default"}
+                    variant={isCurrent ? "secondary" : "default"}
                     onClick={() => onApply(technique.slug)}
                     disabled={applyingTechnique !== null}
                   >
-                    {applyingTechnique === technique.slug ? "Applying..." : isActive ? "Applied" : "Apply"}
+                    {applyingTechnique === technique.slug ? "Applying..." : isCurrent ? "Applied" : "Apply"}
                   </Button>
                 </div>
               );
@@ -96,10 +106,10 @@ export function StudyTechniquePanel({
               <div className="rounded-2xl bg-muted/40 p-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <ListChecks className="h-4 w-4" />
-                  {activeTechnique.dashboard_task_label}
+                  {activeTechnique?.dashboard_task_label ?? "Recommended review tasks"}
                 </div>
                 <p className="mt-2 text-2xl font-bold">
-                  {activeTechnique.slug === "practice_test" ? availableExams : Math.max(weakTopicNames.length, 1)}
+                  {activeSlug === "practice_test" ? availableExams : Math.max(weakTopicNames.length, 1)}
                 </p>
               </div>
               <div className="rounded-2xl bg-muted/40 p-4">
@@ -127,7 +137,7 @@ export function StudyTechniquePanel({
           </CardContent>
         </Card>
 
-        {activeTechnique.slug === "pomodoro" ? <PomodoroFocusTimer /> : null}
+        {activeSlug === "pomodoro" ? <PomodoroFocusTimer /> : null}
       </div>
     </section>
   );

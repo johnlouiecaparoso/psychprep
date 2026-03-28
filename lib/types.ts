@@ -1,9 +1,18 @@
-import { DEFAULT_USER_PREFERENCES, DIFFICULTIES, ROLES, STUDY_TECHNIQUES, THEME_OPTIONS } from "@/lib/constants";
+import {
+  DEFAULT_USER_PREFERENCES,
+  DIFFICULTIES,
+  IMPORT_TYPES,
+  ROLES,
+  STUDY_TECHNIQUES,
+  THEME_OPTIONS
+} from "@/lib/constants";
 
 export type Role = (typeof ROLES)[number];
+export type LegacyRole = Role | "instructor";
 export type Difficulty = (typeof DIFFICULTIES)[number];
 export type ThemePreference = (typeof THEME_OPTIONS)[number];
 export type StudyTechnique = (typeof STUDY_TECHNIQUES)[number];
+export type ImportType = (typeof IMPORT_TYPES)[number];
 
 export type UserPreferences = {
   email_notifications: boolean;
@@ -38,6 +47,16 @@ export type ImportedQuestionRow = {
   Topic: string;
 };
 
+export type ImportedFlashcardRow = {
+  Front: string;
+  Back: string;
+  Explanation: string;
+  Difficulty: Difficulty;
+  Subject: string;
+  Chapter: string;
+  Topic: string;
+};
+
 export type ImportErrorRecord = {
   rowNumber: number;
   message: string;
@@ -45,10 +64,12 @@ export type ImportErrorRecord = {
 };
 
 export type ParsedImportRow = {
+  import_type?: ImportType;
   question_text: string;
   explanation: string;
   difficulty: Difficulty;
   subject: string;
+  chapter?: string;
   topic: string;
   choices: {
     choice_key: "A" | "B" | "C" | "D";
@@ -72,6 +93,8 @@ export type MockExamSummary = {
   id: string;
   title: string;
   subject: string;
+  chapter: string | null;
+  topics: string[];
   questionCount: number;
   topicCount: number;
 };
