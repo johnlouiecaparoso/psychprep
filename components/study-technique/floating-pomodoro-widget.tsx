@@ -4,94 +4,27 @@ import * as React from "react";
 import { BellRing, Clock3, Coffee, Minimize2, Pause, Play, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
+import {
+  DEFAULT_POMODORO_STATE,
+  getNextPomodoroState,
+  getPomodoroSecondsForPhase,
+  POMODORO_STATE_EVENT,
+  playPomodoroRingtone,
+  readPomodoroState,
+  type PomodoroPhase,
+  type StoredPomodoroState,
+  writePomodoroState
+} from "@/lib/pomodoro-state";
 import { StudyTechniqueService } from "@/lib/supabase/study-technique-client";
 import type { StudyTechnique } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const FOCUS_SECONDS = 25 * 60;
-const BREAK_SECONDS = 5 * 60;
-const STORAGE_KEY = "psychboard-pomodoro-widget";
 const TECHNIQUE_CACHE_KEY = "psychboard-active-study-technique";
-
-type PomodoroPhase = "focus" | "break";
-
-type StoredPomodoroState = {
-  phase: PomodoroPhase;
-  secondsLeft: number;
-  isRunning: boolean;
-  roundsCompleted: number;
-  endsAt: number | null;
-  minimized: boolean;
-};
-
-const DEFAULT_STATE: StoredPomodoroState = {
-  phase: "focus",
-  secondsLeft: FOCUS_SECONDS,
-  isRunning: false,
-  roundsCompleted: 0,
-  endsAt: null,
-  minimized: false
-};
-
-function safeParseState(raw: string | null): StoredPomodoroState | null {
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<StoredPomodoroState>;
-    return {
-      phase: parsed.phase === "break" ? "break" : "focus",
-      secondsLeft: typeof parsed.secondsLeft === "number" ? parsed.secondsLeft : FOCUS_SECONDS,
-      isRunning: Boolean(parsed.isRunning),
-      roundsCompleted: typeof parsed.roundsCompleted === "number" ? parsed.roundsCompleted : 0,
-      endsAt: typeof parsed.endsAt === "number" ? parsed.endsAt : null,
-      minimized: Boolean(parsed.minimized)
-    };
-  } catch {
-    return null;
-  }
-}
-
-function playRingtone() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextCtor) {
-    return;
-  }
-
-  const context = new AudioContextCtor();
-  const now = context.currentTime;
-  const notes = [880, 1174, 1568, 1174];
-
-  notes.forEach((frequency, index) => {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    const start = now + index * 0.18;
-    const end = start + 0.14;
-
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(frequency, start);
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(0.18, start + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, end);
-
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(start);
-    oscillator.stop(end);
-  });
-
-  window.setTimeout(() => {
-    void context.close().catch(() => undefined);
-  }, 1200);
-}
 
 export function FloatingPomodoroWidget() {
   const { userId, userRole, loading } = useAuth();
   const [isPomodoroMode, setIsPomodoroMode] = React.useState(false);
-  const [state, setState] = React.useState<StoredPomodoroState>(DEFAULT_STATE);
+  const [state, setState] = React.useState<StoredPomodoroState>(DEFAULT_POMODORO_STATE);
   const [hasHydratedState, setHasHydratedState] = React.useState(false);
   const [isMobileView, setIsMobileView] = React.useState(false);
   const audioPrimedRef = React.useRef(false);
@@ -101,23 +34,7 @@ export function FloatingPomodoroWidget() {
       return;
     }
 
-    const stored = safeParseState(window.localStorage.getItem(STORAGE_KEY));
-    if (!stored) {
-      setHasHydratedState(true);
-      return;
-    }
-
-    if (stored.isRunning && stored.endsAt) {
-      const remainingSeconds = Math.max(0, Math.ceil((stored.endsAt - Date.now()) / 1000));
-      setState({
-        ...stored,
-        secondsLeft: remainingSeconds
-      });
-      setHasHydratedState(true);
-      return;
-    }
-
-    setState(stored);
+    setState(readPomodoroState());
     setHasHydratedState(true);
   }, []);
 
@@ -139,8 +56,29 @@ export function FloatingPomodoroWidget() {
       return;
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    writePomodoroState(state);
   }, [hasHydratedState, state]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const syncState = () => {
+      setState((current) => {
+        const next = readPomodoroState();
+        return JSON.stringify(current) === JSON.stringify(next) ? current : next;
+      });
+    };
+
+    window.addEventListener(POMODORO_STATE_EVENT, syncState as EventListener);
+    window.addEventListener("storage", syncState);
+
+    return () => {
+      window.removeEventListener(POMODORO_STATE_EVENT, syncState as EventListener);
+      window.removeEventListener("storage", syncState);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (loading || userRole !== "student" || !userId) {
@@ -213,17 +151,8 @@ export function FloatingPomodoroWidget() {
           };
         }
 
-        const nextPhase: PomodoroPhase = current.phase === "focus" ? "break" : "focus";
-        const nextSeconds = nextPhase === "focus" ? FOCUS_SECONDS : BREAK_SECONDS;
-        playRingtone();
-
-        return {
-          ...current,
-          phase: nextPhase,
-          secondsLeft: nextSeconds,
-          endsAt: Date.now() + nextSeconds * 1000,
-          roundsCompleted: current.phase === "focus" ? current.roundsCompleted + 1 : current.roundsCompleted
-        };
+        playPomodoroRingtone();
+        return getNextPomodoroState(current);
       });
     }, 1000);
 
@@ -282,7 +211,7 @@ export function FloatingPomodoroWidget() {
     setState((current) => ({
       ...current,
       phase: "focus",
-      secondsLeft: FOCUS_SECONDS,
+      secondsLeft: getPomodoroSecondsForPhase("focus"),
       isRunning: false,
       endsAt: null,
       roundsCompleted: 0
@@ -292,11 +221,10 @@ export function FloatingPomodoroWidget() {
   function switchPhase() {
     setState((current) => {
       const nextPhase: PomodoroPhase = current.phase === "focus" ? "break" : "focus";
-      const nextSeconds = nextPhase === "focus" ? FOCUS_SECONDS : BREAK_SECONDS;
       return {
         ...current,
         phase: nextPhase,
-        secondsLeft: nextSeconds,
+        secondsLeft: getPomodoroSecondsForPhase(nextPhase),
         isRunning: false,
         endsAt: null
       };

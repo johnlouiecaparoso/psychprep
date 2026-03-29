@@ -141,18 +141,18 @@ export function FlashcardDeck({
           <CardTitle>Flashcards</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedChapter("all"); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedChapter("all"); setSelectedTopic("all"); }} className="h-11 w-full min-w-0 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {subjects.map((subject) => <option key={subject} value={subject}>{subject === "all" ? "All subjects" : subject}</option>)}
             </select>
-            <select value={selectedChapter} onChange={(event) => { setSelectedChapter(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
+            <select value={selectedChapter} onChange={(event) => { setSelectedChapter(event.target.value); setSelectedTopic("all"); }} className="h-11 w-full min-w-0 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {chapters.map((chapter) => <option key={chapter} value={chapter}>{chapter === "all" ? "All chapters" : chapter}</option>)}
             </select>
-            <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
+            <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 w-full min-w-0 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {topics.map((topic) => <option key={topic} value={topic}>{topic === "all" ? "All topics" : topic}</option>)}
             </select>
-            <Button variant={shuffleMode ? "default" : "outline"} onClick={() => setShuffleMode((value) => !value)}><Shuffle className="mr-2 h-4 w-4" />{shuffleMode ? "Shuffle on" : "Shuffle off"}</Button>
-            <Button variant={weakOnly ? "default" : "outline"} onClick={() => setWeakOnly((value) => !value)} disabled={weakTopics.length === 0}>Weak topics only</Button>
+            <Button className="w-full" variant={shuffleMode ? "default" : "outline"} onClick={() => setShuffleMode((value) => !value)}><Shuffle className="mr-2 h-4 w-4" />{shuffleMode ? "Shuffle on" : "Shuffle off"}</Button>
+            <Button className="w-full" variant={weakOnly ? "default" : "outline"} onClick={() => setWeakOnly((value) => !value)} disabled={weakTopics.length === 0}>Weak topics only</Button>
           </div>
           <p className="text-sm text-muted-foreground">No flashcards match the selected filters.</p>
         </CardContent>
@@ -164,7 +164,7 @@ export function FlashcardDeck({
     <div className="space-y-6">
       <Card>
         <CardHeader className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Flashcards</CardTitle>
             <div className="text-sm text-muted-foreground">{index + 1} / {orderedCards.length}</div>
           </div>
@@ -175,18 +175,18 @@ export function FlashcardDeck({
                 ? "Pomodoro mode works best when you finish one uninterrupted card round before taking a short break."
                 : "Practice Test mode lets you warm up on cards before taking a full timed set."}
           </div>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedChapter("all"); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <select value={selectedSubject} onChange={(event) => { setSelectedSubject(event.target.value); setSelectedChapter("all"); setSelectedTopic("all"); }} className="h-11 w-full min-w-0 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {subjects.map((subject) => <option key={subject} value={subject}>{subject === "all" ? "All subjects" : subject}</option>)}
             </select>
-            <select value={selectedChapter} onChange={(event) => { setSelectedChapter(event.target.value); setSelectedTopic("all"); }} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
+            <select value={selectedChapter} onChange={(event) => { setSelectedChapter(event.target.value); setSelectedTopic("all"); }} className="h-11 w-full min-w-0 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {chapters.map((chapter) => <option key={chapter} value={chapter}>{chapter === "all" ? "All chapters" : chapter}</option>)}
             </select>
-            <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
+            <select value={selectedTopic} onChange={(event) => setSelectedTopic(event.target.value)} className="h-11 w-full min-w-0 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground">
               {topics.map((topic) => <option key={topic} value={topic}>{topic === "all" ? "All topics" : topic}</option>)}
             </select>
-            <Button variant={shuffleMode ? "default" : "outline"} onClick={() => setShuffleMode((value) => !value)}><Shuffle className="mr-2 h-4 w-4" />{shuffleMode ? "Shuffle on" : "Shuffle off"}</Button>
-            <Button variant={weakOnly ? "default" : "outline"} onClick={() => setWeakOnly((value) => !value)} disabled={weakTopics.length === 0}>Weak topics only</Button>
+            <Button className="w-full" variant={shuffleMode ? "default" : "outline"} onClick={() => setShuffleMode((value) => !value)}><Shuffle className="mr-2 h-4 w-4" />{shuffleMode ? "Shuffle on" : "Shuffle off"}</Button>
+            <Button className="w-full" variant={weakOnly ? "default" : "outline"} onClick={() => setWeakOnly((value) => !value)} disabled={weakTopics.length === 0}>Weak topics only</Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -200,22 +200,20 @@ export function FlashcardDeck({
           <button
             type="button"
             onClick={() => setFlipped((value) => !value)}
-            className="grid min-h-[240px] w-full grid-rows-[auto_1fr] rounded-[24px] border border-border bg-gradient-to-br from-emerald-50 via-background to-amber-50 p-4 text-left text-foreground transition-colors sm:min-h-[320px] sm:rounded-[28px] sm:p-8 dark:from-emerald-950/40 dark:via-slate-900 dark:to-amber-950/30"
+            className="grid min-h-[280px] w-full overflow-hidden grid-rows-[auto_1fr] rounded-[22px] border border-border bg-gradient-to-br from-emerald-50 via-background to-amber-50 p-4 text-left text-foreground transition-colors sm:min-h-[320px] sm:rounded-[28px] sm:p-8 dark:from-emerald-950/40 dark:via-slate-900 dark:to-amber-950/30"
           >
-            <div className="flex items-center justify-between">
-              <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{flipped ? "Answer" : "Quick prompt"}</span>
+            <div className="flex items-center justify-between gap-3">
+              <span className="max-w-[calc(100%-2rem)] rounded-full bg-background px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-[0.2em]">{flipped ? "Answer" : "Quick prompt"}</span>
               <RotateCcw className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="flex items-center justify-center text-center">
               {flipped ? (
-                <>
-                  <div>
-                    <h3 className="text-2xl font-semibold sm:text-3xl">{buildShortAnswer(correctChoice?.choice_text ?? "No answer available")}</h3>
-                    <p className="mt-4 text-sm text-muted-foreground">Correct option: {correctChoice?.choice_key ?? "-"}</p>
-                  </div>
-                </>
+                <div className="w-full max-w-full">
+                  <h3 className="break-words text-xl font-semibold leading-tight sm:text-3xl">{buildShortAnswer(correctChoice?.choice_text ?? "No answer available")}</h3>
+                  <p className="mt-4 text-sm text-muted-foreground">Correct option: {correctChoice?.choice_key ?? "-"}</p>
+                </div>
               ) : (
-                <h3 className="text-xl font-semibold sm:text-2xl">{buildFlashcardPrompt(current.question_text)}</h3>
+                <h3 className="break-words text-lg font-semibold leading-tight sm:text-2xl">{buildFlashcardPrompt(current.question_text)}</h3>
               )}
             </div>
           </button>

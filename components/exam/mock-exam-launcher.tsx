@@ -77,7 +77,15 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
       params.set("shuffle", "1");
     }
 
-    router.push(`/student/mock-exams/${exam.id}?${params.toString()}`);
+    if (exam.chapter) {
+      params.set("chapter", exam.chapter);
+    }
+
+    if (selectedTopic !== "all") {
+      params.set("topic", selectedTopic);
+    }
+
+    router.push(`/student/mock-exams/${exam.sourceExamId}?${params.toString()}`);
   }
 
   if (!activeSubject) {
@@ -125,13 +133,13 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
 
   return (
     <section className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="outline" onClick={() => setSelectedSubject("all")}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Button variant="outline" className="w-full sm:w-auto" onClick={() => setSelectedSubject("all")}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to subjects
         </Button>
-        <div>
-          <h2 className="text-2xl font-semibold">{activeSubject.subject}</h2>
+        <div className="min-w-0">
+          <h2 className="break-words text-xl font-semibold sm:text-2xl">{activeSubject.subject}</h2>
           <p className="text-sm text-muted-foreground">Choose a chapter to begin.</p>
         </div>
       </div>
@@ -175,7 +183,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
         </select>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-4 lg:gap-6 xl:grid-cols-2">
         {activeSubject.exams
           .filter((exam) => {
             const chapterMatch = selectedChapter === "all" || (exam.chapter ?? exam.setLabel) === selectedChapter;
@@ -193,20 +201,20 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
                 <button
                   type="button"
                   onClick={() => setOpenExamId((current) => (current === exam.id ? null : exam.id))}
-                  className="flex w-full items-center justify-between gap-4 text-left"
+                  className="flex w-full items-start justify-between gap-4 text-left"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <CardTitle>{exam.setLabel}</CardTitle>
                       {availableOffline[exam.id] ? <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">Offline ready</span> : null}
                     </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{exam.title}</p>
+                    <p className="mt-2 break-words text-sm text-muted-foreground">{exam.title}</p>
                   </div>
                   <ChevronDown className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
                 </button>
               </CardHeader>
               <CardContent className={isOpen ? "space-y-4" : "hidden"}>
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div className="flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                   <span>{exam.questionCount} questions</span>
                   <span>{exam.topicCount} topics</span>
                 </div>

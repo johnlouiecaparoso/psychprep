@@ -310,33 +310,43 @@ export function MockExamClient({
               })}
             </div>
 
-            <div className="flex flex-wrap justify-between gap-3">
-              <Button variant="outline" onClick={() => setCurrentIndex((value) => Math.max(0, value - 1))} disabled={currentIndex === 0}>
+            <div className="flex flex-col gap-3">
+              <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => setCurrentIndex((value) => Math.max(0, value - 1))}
+                  disabled={currentIndex === 0}
+                >
                 Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button variant="secondary" onClick={() => setCurrentIndex((value) => Math.min(questions.length - 1, value + 1))} disabled={currentIndex === questions.length - 1}>
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="w-full sm:w-auto"
+                  onClick={() => setCurrentIndex((value) => Math.min(questions.length - 1, value + 1))}
+                  disabled={currentIndex === questions.length - 1}
+                >
                   Next
                 </Button>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button>{mode === "quiz" ? "Submit quiz" : "Submit exam"}</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <h3 className="text-xl font-semibold">Submit {mode === "quiz" ? "quiz" : "attempt"}?</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Once submitted, the system will compute your score, weak topics, and explanations review.
-                    </p>
-                    {submitError ? <p className="mt-3 text-sm text-destructive">{submitError}</p> : null}
-                    <div className="mt-6 flex justify-end gap-3">
-                      <Button variant="outline">Cancel</Button>
-                      <Button onClick={handleSubmit} disabled={isSubmitting}>
-                        {isSubmitting ? "Submitting..." : `Confirm ${mode === "quiz" ? "quiz" : "submit"}`}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
               </div>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="w-full sm:w-auto sm:self-end">{mode === "quiz" ? "Submit quiz" : "Submit exam"}</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <h3 className="text-xl font-semibold">Submit {mode === "quiz" ? "quiz" : "attempt"}?</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Once submitted, the system will compute your score, weak topics, and explanations review.
+                  </p>
+                  {submitError ? <p className="mt-3 text-sm text-destructive">{submitError}</p> : null}
+                  <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <Button variant="outline">Cancel</Button>
+                    <Button onClick={handleSubmit} disabled={isSubmitting}>
+                      {isSubmitting ? "Submitting..." : `Confirm ${mode === "quiz" ? "quiz" : "submit"}`}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardContent>
         </Card>

@@ -31,6 +31,43 @@ export function CsvImportPanel({
   const [isSaving, setIsSaving] = React.useState(false);
   const [savedMessage, setSavedMessage] = React.useState("");
   const [fileName, setFileName] = React.useState("");
+  const importBreakdown = React.useMemo(() => {
+    if (!preview) {
+      return [];
+    }
+
+    const subjectMap = new Map<
+      string,
+      {
+        rows: number;
+        chapters: Set<string>;
+        topics: Set<string>;
+      }
+    >();
+
+    preview.validRows.forEach((row) => {
+      const current = subjectMap.get(row.subject) ?? {
+        rows: 0,
+        chapters: new Set<string>(),
+        topics: new Set<string>()
+      };
+
+      current.rows += 1;
+      current.chapters.add(row.chapter?.trim() || "General");
+      current.topics.add(row.topic.trim());
+      subjectMap.set(row.subject, current);
+    });
+
+    return Array.from(subjectMap.entries())
+      .map(([subject, stats]) => ({
+        subject,
+        rowCount: stats.rows,
+        chapterCount: stats.chapters.size,
+        topicCount: stats.topics.size,
+        chapters: Array.from(stats.chapters).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      }))
+      .sort((a, b) => a.subject.localeCompare(b.subject));
+  }, [preview]);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -144,6 +181,72 @@ export function CsvImportPanel({
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Import summary</CardTitle>
+              <CardDescription>
+                Review the subject, chapter, and topic counts before saving so partial uploads are easy to catch.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {importBreakdown.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No valid rows were found in this file.</p>
+              ) : (
+                <>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-muted-foreground">Subjects found</p>
+                        <p className="mt-2 text-2xl font-bold">{importBreakdown.length}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-muted-foreground">Chapters found</p>
+                        <p className="mt-2 text-2xl font-bold">
+                          {importBreakdown.reduce((total, item) => total + item.chapterCount, 0)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-muted-foreground">Topics found</p>
+                        <p className="mt-2 text-2xl font-bold">
+                          {importBreakdown.reduce((total, item) => total + item.topicCount, 0)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Subject</TableHead>
+                        <TableHead>Rows</TableHead>
+                        <TableHead>Chapters</TableHead>
+                        <TableHead>Topics</TableHead>
+                        <TableHead>Chapter list</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {importBreakdown.map((item) => (
+                        <TableRow key={item.subject}>
+                          <TableCell className="font-medium">{item.subject}</TableCell>
+                          <TableCell>{item.rowCount}</TableCell>
+                          <TableCell>{item.chapterCount}</TableCell>
+                          <TableCell>{item.topicCount}</TableCell>
+                          <TableCell className="max-w-md text-sm text-muted-foreground">
+                            {item.chapters.join(", ")}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

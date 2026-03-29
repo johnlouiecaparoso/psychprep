@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { MockExamClient } from "@/components/exam/mock-exam-client";
+import { inferChapterLabel, stripChapterFromTopic } from "@/lib/review-content";
 import { createClient } from "@/lib/supabase/server";
 import { getMockExamQuestions } from "@/lib/supabase/review-service";
 import { getCurrentStudyTechniqueServer, getStudyTechniquesServer } from "@/lib/supabase/study-technique-server";
@@ -26,7 +27,15 @@ export default async function StudentMockExamPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ shuffle?: string; seed?: string; mode?: string; limit?: string; duration?: string }>;
+  searchParams: Promise<{
+    shuffle?: string;
+    seed?: string;
+    mode?: string;
+    limit?: string;
+    duration?: string;
+    chapter?: string;
+    topic?: string;
+  }>;
 }) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
@@ -43,24 +52,32 @@ export default async function StudentMockExamPage({
   const shouldShuffle = resolvedSearchParams.shuffle === "1";
   const seed = resolvedSearchParams.seed ?? id;
   const mode = resolvedSearchParams.mode === "quiz" ? "quiz" : "mock";
+  const selectedChapter = resolvedSearchParams.chapter?.trim() || null;
+  const selectedTopic = resolvedSearchParams.topic?.trim() || null;
+  const filteredQuestions = baseQuestions.filter((question) => {
+    const chapterMatch = !selectedChapter || inferChapterLabel(question.topic) === selectedChapter;
+    const topicMatch = !selectedTopic || stripChapterFromTopic(question.topic) === selectedTopic;
+    return chapterMatch && topicMatch;
+  });
+  const sessionQuestions = filteredQuestions.length > 0 ? filteredQuestions : baseQuestions;
   const requestedLimit = Number.parseInt(resolvedSearchParams.limit ?? String(baseQuestions.length), 10);
   const safeLimit = Number.isFinite(requestedLimit)
-    ? Math.min(Math.max(requestedLimit, 1), baseQuestions.length)
-    : baseQuestions.length;
+    ? Math.min(Math.max(requestedLimit, 1), sessionQuestions.length)
+    : sessionQuestions.length;
   const requestedDurationMinutes = Number.parseInt(resolvedSearchParams.duration ?? "", 10);
   const fallbackDurationMinutes = mode === "quiz" ? Math.max(safeLimit * 2, 10) : 45;
   const durationMinutes = Number.isFinite(requestedDurationMinutes)
     ? Math.min(Math.max(requestedDurationMinutes, 5), 240)
     : fallbackDurationMinutes;
 
-  let preparedQuestions: ReviewQuestion[] = shouldShuffle ? seededShuffle(baseQuestions, seed) : baseQuestions;
+  let preparedQuestions: ReviewQuestion[] = shouldShuffle ? seededShuffle(sessionQuestions, seed) : sessionQuestions;
   preparedQuestions = mode === "quiz" ? preparedQuestions.slice(0, safeLimit) : preparedQuestions;
   const currentTechnique = user ? await getCurrentStudyTechniqueServer(user.id) : null;
   const techniqueFallback = currentTechnique ?? (await getStudyTechniquesServer())[0] ?? null;
   const studyTechnique = (techniqueFallback?.slug ?? "practice_test") as StudyTechnique;
 
   const topicCount = new Set(preparedQuestions.map((question) => question.topic)).size;
-  const sessionKey = `${id}:${mode}:${safeLimit}:${durationMinutes}:${shouldShuffle ? `shuffle:${seed}` : "ordered"}`;
+  const sessionKey = `${id}:${selectedChapter ?? "all"}:${selectedTopic ?? "all"}:${mode}:${safeLimit}:${durationMinutes}:${shouldShuffle ? `shuffle:${seed}` : "ordered"}`;
 
   return (
     <AppShell
@@ -72,7 +89,10 @@ export default async function StudentMockExamPage({
     >
       <Card>
         <CardContent className="p-6 text-sm text-muted-foreground">
-          Subject: {preparedQuestions[0].subject} | Topic coverage: {topicCount} | Items: {preparedQuestions.length} | Time: {durationMinutes} min | Order: {shouldShuffle ? "Shuffled" : "Standard"} | Mode: {techniqueFallback?.name ?? "Practice Test"}
+          Subject: {preparedQuestions[0].subject}
+          {selectedChapter ? ` | Chapter: ${selectedChapter}` : ""}
+          {selectedTopic ? ` | Topic: ${selectedTopic}` : ""}
+          {" | "}Topic coverage: {topicCount} | Items: {preparedQuestions.length} | Time: {durationMinutes} min | Order: {shouldShuffle ? "Shuffled" : "Standard"} | Mode: {techniqueFallback?.name ?? "Practice Test"}
         </CardContent>
       </Card>
       <MockExamClient

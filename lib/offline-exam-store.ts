@@ -13,8 +13,11 @@ const REVIEWER_STORE = "reviewer_files";
 export type OfflineExamPack = {
   id: string;
   examId: string;
+  sourceExamId: string;
   title: string;
   subject: string;
+  chapter: string | null;
+  topic: string | null;
   questions: ReviewQuestion[];
   savedAt: string;
 };

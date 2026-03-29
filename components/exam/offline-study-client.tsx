@@ -4,8 +4,8 @@ import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MockExamClient } from "@/components/exam/mock-exam-client";
-import { loadExamPack } from "@/lib/offline-exam-store";
-import type { ReviewQuestion, StudyTechnique } from "@/lib/types";
+import { loadExamPack, type OfflineExamPack } from "@/lib/offline-exam-store";
+import type { StudyTechnique } from "@/lib/types";
 
 function seededShuffle<T>(items: T[], seed: string) {
   const result = [...items];
@@ -29,7 +29,7 @@ export function OfflineStudyClient({ studyTechnique }: { studyTechnique: StudyTe
   const durationParam = Number.parseInt(searchParams.get("duration") ?? "", 10);
   const shouldShuffle = searchParams.get("shuffle") === "1";
   const seed = searchParams.get("seed") ?? examId;
-  const [pack, setPack] = React.useState<{ title: string; subject: string; questions: ReviewQuestion[] } | null>(null);
+  const [pack, setPack] = React.useState<OfflineExamPack | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -41,11 +41,7 @@ export function OfflineStudyClient({ studyTechnique }: { studyTechnique: StudyTe
     void loadExamPack(examId)
       .then((savedPack) => {
         if (savedPack) {
-          setPack({
-            title: savedPack.title,
-            subject: savedPack.subject,
-            questions: savedPack.questions
-          });
+          setPack(savedPack);
         }
       })
       .finally(() => setLoading(false));
@@ -88,7 +84,7 @@ export function OfflineStudyClient({ studyTechnique }: { studyTechnique: StudyTe
         </CardContent>
       </Card>
       <MockExamClient
-        examId={examId}
+        examId={pack.sourceExamId}
         examTitle={pack.title}
         subject={pack.subject}
         questions={preparedQuestions}

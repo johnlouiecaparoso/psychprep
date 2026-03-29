@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getMockExamQuestions } from "@/lib/supabase/review-service";
+import { inferChapterLabel } from "@/lib/review-content";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -18,16 +19,22 @@ export async function GET(
     }
 
     const { id } = await params;
-    const questions = await getMockExamQuestions(supabase, id);
+    const url = new URL(request.url);
+    const chapter = url.searchParams.get("chapter");
+    const questions = (await getMockExamQuestions(supabase, id)).filter((question) =>
+      chapter ? inferChapterLabel(question.topic) === chapter : true
+    );
 
     if (questions.length === 0) {
       return NextResponse.json({ error: "Study pack not found." }, { status: 404 });
     }
 
     return NextResponse.json({
-      examId: id,
+      examId: chapter ? `${id}::${chapter}` : id,
+      sourceExamId: id,
       title: `${questions[0].subject} reviewer set`,
       subject: questions[0].subject,
+      chapter: chapter ?? null,
       questions
     });
   } catch (error) {

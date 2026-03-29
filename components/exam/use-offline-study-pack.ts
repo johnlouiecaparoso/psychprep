@@ -40,18 +40,36 @@ export function useOfflineStudyPack(exams: MockExamSummary[]) {
   async function downloadPack(exam: MockExamSummary) {
     try {
       setDownloadState((prev) => ({ ...prev, [exam.id]: "downloading" }));
-      const response = await fetch(`/api/offline-study-pack/${exam.id}`);
-      const data = (await response.json()) as { examId?: string; title?: string; subject?: string; questions?: any[]; error?: string };
+      const params = new URLSearchParams();
+      if (exam.chapter) {
+        params.set("chapter", exam.chapter);
+      }
+
+      const response = await fetch(
+        `/api/offline-study-pack/${exam.sourceExamId}${params.size > 0 ? `?${params.toString()}` : ""}`
+      );
+      const data = (await response.json()) as {
+        examId?: string;
+        sourceExamId?: string;
+        title?: string;
+        subject?: string;
+        chapter?: string | null;
+        questions?: any[];
+        error?: string;
+      };
 
       if (!response.ok || !data.examId || !data.questions) {
         throw new Error(data.error ?? "Failed to download offline study pack.");
       }
 
       await saveExamPack({
-        id: `exam-pack:${data.examId}`,
-        examId: data.examId,
+        id: `exam-pack:${exam.id}`,
+        examId: exam.id,
+        sourceExamId: data.sourceExamId ?? exam.sourceExamId,
         title: data.title ?? exam.title,
         subject: data.subject ?? exam.subject,
+        chapter: data.chapter ?? exam.chapter ?? null,
+        topic: null,
         questions: data.questions,
         savedAt: new Date().toISOString()
       });
@@ -82,6 +100,10 @@ export function useOfflineStudyPack(exams: MockExamSummary[]) {
       duration,
       seed: Date.now().toString()
     });
+
+    if (exam.chapter) {
+      params.set("chapter", exam.chapter);
+    }
 
     if (mode === "quiz" && limit) {
       params.set("limit", limit);

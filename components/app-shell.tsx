@@ -120,8 +120,8 @@ export function AppShell({
   const sidebar = (
     <aside
       className={cn(
-        "max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[28px] border bg-card/95 p-5 text-card-foreground shadow-soft backdrop-blur",
-        "lg:sticky lg:top-6 lg:block",
+        "h-full max-h-none overflow-y-auto rounded-[24px] border bg-card/95 p-4 text-card-foreground shadow-soft backdrop-blur sm:p-5",
+        "lg:sticky lg:top-6 lg:block lg:max-h-[calc(100vh-2rem)] lg:rounded-[28px]",
         isSidebarOpen ? "block" : "hidden lg:block"
       )}
     >
@@ -214,8 +214,10 @@ export function AppShell({
       </div>
 
       {isSidebarOpen ? (
-        <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/50 lg:hidden">
-          <div className="min-h-full max-w-[300px] p-4">{sidebar}</div>
+        <div className="fixed inset-0 z-40 bg-slate-950/50 lg:hidden">
+          <div className="h-[100dvh] p-3 sm:p-4">
+            <div className="h-full w-[min(20rem,calc(100vw-1.5rem))]">{sidebar}</div>
+          </div>
         </div>
       ) : null}
 

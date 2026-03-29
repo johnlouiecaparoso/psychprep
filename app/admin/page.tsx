@@ -85,7 +85,9 @@ export default async function AdminPage() {
 
   (mockExamsRes.data ?? []).forEach((exam: any) => {
     const type = detectImportTypeFromTitle(exam.title ?? "");
-    contentCounts[type] += 1;
+    if (type) {
+      contentCounts[type] += 1;
+    }
   });
 
   return (

@@ -91,6 +91,7 @@ export type ReviewQuestion = ParsedImportRow & {
 
 export type MockExamSummary = {
   id: string;
+  sourceExamId: string;
   title: string;
   subject: string;
   chapter: string | null;

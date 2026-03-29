@@ -14,7 +14,11 @@ export function stripImportPrefix(title: string) {
   return title.replace(/^\[(EXAM|QUIZ|FLASHCARD)\]\s*/i, "").trim();
 }
 
-export function detectImportTypeFromTitle(title: string): ImportType {
+export function detectImportTypeFromTitle(title: string): ImportType | null {
+  if (/^\[EXAM\]/i.test(title)) {
+    return "exam";
+  }
+
   if (/^\[QUIZ\]/i.test(title)) {
     return "quiz";
   }
@@ -23,7 +27,7 @@ export function detectImportTypeFromTitle(title: string): ImportType {
     return "flashcard";
   }
 
-  return "exam";
+  return null;
 }
 
 export function inferChapterLabel(value: string | null | undefined) {

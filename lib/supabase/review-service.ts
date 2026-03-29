@@ -37,24 +37,50 @@ export async function getMockExamSummaries(
 
   return (data ?? [])
     .filter((exam: any) => detectImportTypeFromTitle(exam.title ?? "") === contentType)
-    .map((exam: any) => {
-      const topicNames = Array.from(
-        new Set<string>(
-          (exam.exam_questions ?? [])
-            .map((question: any) => question.topics?.name)
-            .filter((topicName: string | null | undefined): topicName is string => Boolean(topicName))
-        )
-      );
+    .flatMap<MockExamSummary>((exam: any) => {
       const normalizedTitle = stripImportPrefix(exam.title ?? "");
-      return {
-        id: exam.id,
+      const subject = exam.subjects?.name ?? "Unassigned Subject";
+      const chapterGroups = new Map<
+        string,
+        { topicId: string | null; topicName: string }[]
+      >();
+
+      (exam.exam_questions ?? []).forEach((question: any) => {
+        const topicName = question.topics?.name ?? "General";
+        const chapterLabel = inferChapterLabel(topicName) ?? inferChapterLabel(normalizedTitle) ?? "Chapter 1";
+        const current = chapterGroups.get(chapterLabel) ?? [];
+        current.push({
+          topicId: question.topic_id ?? null,
+          topicName
+        });
+        chapterGroups.set(chapterLabel, current);
+      });
+
+      if (chapterGroups.size === 0) {
+        return [
+          {
+            id: exam.id,
+            sourceExamId: exam.id,
+            title: normalizedTitle,
+            subject,
+            chapter: inferChapterLabel(normalizedTitle) ?? null,
+            topics: [],
+            questionCount: 0,
+            topicCount: 0
+          }
+        ];
+      }
+
+      return Array.from(chapterGroups.entries()).map(([chapterLabel, entries]) => ({
+        id: `${exam.id}::${chapterLabel}`,
+        sourceExamId: exam.id,
         title: normalizedTitle,
-        subject: exam.subjects?.name ?? "Unassigned Subject",
-        chapter: inferChapterLabel(topicNames[0] ?? normalizedTitle),
-        topics: topicNames.map((topic) => stripChapterFromTopic(topic)),
-        questionCount: exam.exam_questions?.length ?? 0,
-        topicCount: new Set((exam.exam_questions ?? []).map((question: any) => question.topic_id)).size
-      };
+        subject,
+        chapter: chapterLabel,
+        topics: Array.from(new Set(entries.map((entry) => stripChapterFromTopic(entry.topicName)))),
+        questionCount: entries.length,
+        topicCount: new Set(entries.map((entry) => entry.topicId).filter(Boolean)).size
+      }));
     });
 }
 
