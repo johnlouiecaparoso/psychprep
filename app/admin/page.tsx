@@ -109,17 +109,17 @@ export default async function AdminPage() {
           <p className="text-sm text-muted-foreground">
             Use separate import flows for exams, quizzes, flashcards, and reviewer PDFs so students only see the right content in each dashboard.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/admin/imports/exams" className={buttonVariants()}>
+          <div className="grid gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
+            <Link href="/admin/imports/exams" className={cn(buttonVariants(), "w-full xl:w-auto")}>
               Exam imports
             </Link>
-            <Link href="/admin/imports/quizzes" className={cn(buttonVariants({ variant: "outline" }))}>
+            <Link href="/admin/imports/quizzes" className={cn(buttonVariants({ variant: "outline" }), "w-full xl:w-auto")}>
               Quiz imports
             </Link>
-            <Link href="/admin/imports/flashcards" className={cn(buttonVariants({ variant: "outline" }))}>
+            <Link href="/admin/imports/flashcards" className={cn(buttonVariants({ variant: "outline" }), "w-full xl:w-auto")}>
               Flashcard imports
             </Link>
-            <Link href="/admin/reviewers" className={cn(buttonVariants({ variant: "outline" }))}>
+            <Link href="/admin/reviewers" className={cn(buttonVariants({ variant: "outline" }), "w-full xl:w-auto")}>
               Reviewer PDFs
             </Link>
           </div>
@@ -146,10 +146,10 @@ export default async function AdminPage() {
               <TableBody>
                 {(studentProfilesRes.data ?? []).map((student: any) => (
                   <TableRow key={student.id}>
-                    <TableCell>{student.full_name || "No name yet"}</TableCell>
-                    <TableCell>{student.email || "-"}</TableCell>
+                    <TableCell className="min-w-[140px]">{student.full_name || "No name yet"}</TableCell>
+                    <TableCell className="min-w-[220px]">{student.email || "-"}</TableCell>
                     <TableCell className="capitalize">{student.role || "student"}</TableCell>
-                    <TableCell>
+                    <TableCell className="min-w-[170px]">
                       {student.created_at ? new Date(student.created_at).toLocaleString() : "-"}
                     </TableCell>
                   </TableRow>
@@ -159,7 +159,7 @@ export default async function AdminPage() {
           )}
         </CardContent>
       </Card>
-      <section className="grid gap-6 xl:grid-cols-2">
+      <section className="grid gap-5 xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Student performance overview</CardTitle>

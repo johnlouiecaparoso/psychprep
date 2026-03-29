@@ -63,20 +63,20 @@ export function StudyTechniquePanel({
               {activeTechnique?.impact_summary ?? "Study sessions will use the normal dashboard flow until you apply a technique."}
             </p>
             {activeTechnique ? (
-              <Button className="mt-4" variant="outline" onClick={() => onClear()} disabled={applyingTechnique !== null}>
+              <Button className="mt-4 w-full sm:w-auto" variant="outline" onClick={() => onClear()} disabled={applyingTechnique !== null}>
                 Cancel current technique
               </Button>
             ) : null}
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {techniques.map((technique) => {
               const isCurrent = activeTechnique ? technique.id === activeTechnique.id : false;
 
               return (
                 <div key={technique.id} className={`rounded-2xl border p-4 ${isCurrent ? "border-primary bg-primary/5" : "border-border bg-muted/20"}`}>
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-lg font-semibold">{technique.name}</p>
+                    <p className="text-lg font-semibold break-words">{technique.name}</p>
                     {isCurrent ? <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">Active</span> : null}
                   </div>
                   <p className="mt-3 text-sm text-muted-foreground">{technique.description}</p>

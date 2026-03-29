@@ -3,8 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { detectImportTypeFromTitle } from "@/lib/review-content";
 import type { ImportType } from "@/lib/types";
+import type { createClient as createServerClient } from "@/lib/supabase/server";
 
 type ResettableContentType = ImportType | "reviewer";
+type ServerClient = Awaited<ReturnType<typeof createServerClient>>;
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -18,16 +20,16 @@ async function requireAdmin() {
   }
 
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  if ((profile?.role ?? user.user_metadata?.role) !== "admin") {
+  const role = profile?.role ?? user.user_metadata?.role;
+  if (role !== "admin" && role !== "instructor") {
     throw new Error("Forbidden");
   }
 
-  return user.id;
+  return { userId: user.id, supabase };
 }
 
-async function deleteQuestionContent(contentType: ImportType) {
-  const admin = createAdminClient();
-  const { data: exams, error: examError } = await admin
+async function deleteQuestionContent(supabase: ServerClient, contentType: ImportType) {
+  const { data: exams, error: examError } = await supabase
     .from("mock_exams")
     .select("id, title");
 
@@ -43,51 +45,7 @@ async function deleteQuestionContent(contentType: ImportType) {
     return 0;
   }
 
-  const { data: attempts, error: attemptsError } = await admin
-    .from("exam_attempts")
-    .select("id")
-    .in("mock_exam_id", matchingExamIds);
-
-  if (attemptsError) {
-    throw attemptsError;
-  }
-
-  const attemptIds = (attempts ?? []).map((attempt: any) => attempt.id as string);
-  if (attemptIds.length > 0) {
-    const { error: answersDeleteError } = await admin.from("exam_answers").delete().in("attempt_id", attemptIds);
-    if (answersDeleteError) {
-      throw answersDeleteError;
-    }
-
-    const { error: attemptsDeleteError } = await admin.from("exam_attempts").delete().in("id", attemptIds);
-    if (attemptsDeleteError) {
-      throw attemptsDeleteError;
-    }
-  }
-
-  const { data: questions, error: questionsError } = await admin
-    .from("exam_questions")
-    .select("id")
-    .in("mock_exam_id", matchingExamIds);
-
-  if (questionsError) {
-    throw questionsError;
-  }
-
-  const questionIds = (questions ?? []).map((question: any) => question.id as string);
-  if (questionIds.length > 0) {
-    const { error: choicesDeleteError } = await admin.from("exam_choices").delete().in("question_id", questionIds);
-    if (choicesDeleteError) {
-      throw choicesDeleteError;
-    }
-
-    const { error: questionsDeleteError } = await admin.from("exam_questions").delete().in("id", questionIds);
-    if (questionsDeleteError) {
-      throw questionsDeleteError;
-    }
-  }
-
-  const { error: examsDeleteError } = await admin.from("mock_exams").delete().in("id", matchingExamIds);
+  const { error: examsDeleteError } = await supabase.from("mock_exams").delete().in("id", matchingExamIds);
   if (examsDeleteError) {
     throw examsDeleteError;
   }
@@ -126,7 +84,7 @@ async function deleteReviewers() {
 
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    const { supabase } = await requireAdmin();
     const body = (await request.json()) as { contentType?: ResettableContentType };
     const contentType = body.contentType;
 
@@ -136,7 +94,7 @@ export async function POST(request: Request) {
 
     const deletedCount = contentType === "reviewer"
       ? await deleteReviewers()
-      : await deleteQuestionContent(contentType);
+      : await deleteQuestionContent(supabase, contentType);
 
     return NextResponse.json({ deletedCount });
   } catch (error) {

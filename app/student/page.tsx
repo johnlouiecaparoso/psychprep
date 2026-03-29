@@ -158,11 +158,11 @@ export default function StudentPage() {
         onClear={handleClearTechnique}
       />
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_320px]">
+      <section className="grid gap-5 xl:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader><CardTitle>Next best move</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-2xl font-semibold">{studyOverview?.recommendedFocus ?? "Start with a mock exam"}</p>
+            <p className="break-words text-xl font-semibold sm:text-2xl">{studyOverview?.recommendedFocus ?? "Start with a mock exam"}</p>
             <p className="text-sm text-muted-foreground">
               Recommended focus based on your weakest available topic, recent study history, and your current {activeTechnique?.name ?? "default review"} mode.
             </p>
@@ -176,11 +176,11 @@ export default function StudentPage() {
                 <p className="mt-2 text-2xl font-bold">{studyOverview?.availableReviewers ?? 0}</p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
-              {activeTechnique ? <Link href={activeTechnique.recommended_href as any} className={buttonVariants()}>{activeTechnique.recommended_action_label}</Link> : null}
-              <Link href="/student/mock-exams" className={cn(buttonVariants({ variant: "outline" }))}>Mock exams</Link>
-              <Link href="/student/flashcards" className={cn(buttonVariants({ variant: "outline" }))}>Flashcards</Link>
-              <Link href="/student/reviewers" className={cn(buttonVariants({ variant: "outline" }))}>Open reviewers</Link>
+            <div className="grid gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
+              {activeTechnique ? <Link href={activeTechnique.recommended_href as any} className={cn(buttonVariants(), "w-full xl:w-auto")}>{activeTechnique.recommended_action_label}</Link> : null}
+              <Link href="/student/mock-exams" className={cn(buttonVariants({ variant: "outline" }), "w-full xl:w-auto")}>Mock exams</Link>
+              <Link href="/student/flashcards" className={cn(buttonVariants({ variant: "outline" }), "w-full xl:w-auto")}>Flashcards</Link>
+              <Link href="/student/reviewers" className={cn(buttonVariants({ variant: "outline" }), "w-full xl:w-auto")}>Open reviewers</Link>
             </div>
           </CardContent>
         </Card>
@@ -197,7 +197,7 @@ export default function StudentPage() {
         </Card>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
+      <section className="grid gap-5 xl:grid-cols-2">
         <Card>
           <CardHeader><CardTitle>Subject performance</CardTitle></CardHeader>
           <CardContent>
@@ -230,7 +230,7 @@ export default function StudentPage() {
         </CardContent>
       </Card>
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_320px]">
+      <section className="grid gap-5 xl:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader><CardTitle>Recent exams</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -239,8 +239,8 @@ export default function StudentPage() {
             ) : (
               recentExams.map((exam) => (
                 <div key={exam.id} className="rounded-2xl bg-muted/50 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-semibold">{exam.title}</p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="break-words font-semibold">{exam.title}</p>
                     <p className="text-sm font-semibold text-primary">{exam.score}%</p>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{exam.date}</p>

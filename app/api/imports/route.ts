@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { persistUploadBatch } from "@/lib/supabase/import-service";
 import type { ImportErrorRecord, ImportType, ParsedImportRow } from "@/lib/types";
 
@@ -15,6 +16,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    const role = profile?.role ?? user.user_metadata?.role;
+
+    if (role !== "admin" && role !== "instructor") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = (await request.json()) as {
       fileName: string;
       importType: ImportType;
@@ -23,7 +31,7 @@ export async function POST(request: Request) {
     };
 
     const uploadId = await persistUploadBatch({
-      supabase,
+      supabase: createAdminClient(),
       uploadedBy: user.id,
       fileName: body.fileName,
       importType: body.importType,

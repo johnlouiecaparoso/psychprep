@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, CheckCircle2, FileSpreadsheet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, Sparkles } from "lucide-react";
 import { parseExamFile, validateImportRows } from "@/lib/csv/parser";
 import type { ImportType, ParsedImportRow } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type PreviewState = {
@@ -31,6 +32,7 @@ export function CsvImportPanel({
   const [isSaving, setIsSaving] = React.useState(false);
   const [savedMessage, setSavedMessage] = React.useState("");
   const [fileName, setFileName] = React.useState("");
+  const [successDialogOpen, setSuccessDialogOpen] = React.useState(false);
   const importBreakdown = React.useMemo(() => {
     if (!preview) {
       return [];
@@ -127,6 +129,7 @@ export function CsvImportPanel({
       }
 
       setSavedMessage(`Import saved successfully. Upload ID: ${data.uploadId}`);
+      setSuccessDialogOpen(true);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to save import.");
     } finally {
@@ -315,6 +318,40 @@ export function CsvImportPanel({
           </div>
         </>
       ) : null}
+
+      <Dialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
+        <DialogContent className="max-w-md rounded-[28px] p-0">
+          <div className="overflow-hidden rounded-[28px]">
+            <div className="border-b border-emerald-500/10 bg-emerald-500/5 px-6 py-5">
+              <div className="flex items-start gap-4">
+                <div className="rounded-2xl bg-emerald-500/10 p-3 text-emerald-600 dark:text-emerald-300">
+                  <Sparkles className="h-6 w-6" />
+                </div>
+                <div className="space-y-2">
+                  <DialogTitle className="text-xl font-semibold text-foreground">Import successful</DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    Your {importType} file has been saved successfully and is now ready for the system.
+                  </DialogDescription>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-5 px-6 py-5">
+              <div className="rounded-2xl bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+                <p><span className="font-medium text-foreground">File:</span> {fileName || "Imported file"}</p>
+                <p className="mt-1"><span className="font-medium text-foreground">Saved rows:</span> {preview?.summary.successRows ?? 0}</p>
+                {savedMessage ? <p className="mt-1 break-words">{savedMessage}</p> : null}
+              </div>
+
+              <div className="flex justify-end">
+                <Button className="w-full sm:w-auto" onClick={() => setSuccessDialogOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
