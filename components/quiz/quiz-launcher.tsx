@@ -6,6 +6,7 @@ import { ArrowLeft, ChevronDown, Download, Shuffle } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOfflineStudyPack } from "@/components/exam/use-offline-study-pack";
+import { compareChapterLabels } from "@/lib/review-content";
 import type { MockExamSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -28,13 +29,17 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
       grouped.set(exam.subject, current);
     });
 
-    return Array.from(grouped.entries()).map(([subject, subjectExams]) => ({
-      subject,
-      exams: subjectExams.map((exam, index) => ({
-        ...exam,
-        chapterLabel: exam.chapter ?? `Chapter ${index + 1}`
+    return Array.from(grouped.entries())
+      .map(([subject, subjectExams]) => ({
+        subject,
+        exams: subjectExams
+          .map((exam, index) => ({
+            ...exam,
+            chapterLabel: exam.chapter ?? `Chapter ${index + 1}`
+          }))
+          .sort((left, right) => compareChapterLabels(left.chapter ?? left.chapterLabel, right.chapter ?? right.chapterLabel))
       }))
-    }));
+      .sort((left, right) => left.subject.localeCompare(right.subject, undefined, { sensitivity: "base", numeric: true }));
   }, [exams]);
   const subjectOptions = React.useMemo(() => ["all", ...examsBySubject.map((group) => group.subject)], [examsBySubject]);
   const activeSubject = React.useMemo(
@@ -53,7 +58,10 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
       return ["all"];
     }
 
-    return ["all", ...Array.from(new Set(activeSubject.exams.map((exam) => exam.chapter ?? exam.chapterLabel)))];
+    return [
+      "all",
+      ...Array.from(new Set(activeSubject.exams.map((exam) => exam.chapter ?? exam.chapterLabel))).sort(compareChapterLabels)
+    ];
   }, [activeSubject]);
 
   const topicOptions = React.useMemo(() => {
@@ -65,7 +73,12 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
       ? activeSubject.exams
       : activeSubject.exams.filter((exam) => (exam.chapter ?? exam.chapterLabel) === selectedChapter);
 
-    return ["all", ...Array.from(new Set(source.flatMap((exam) => exam.topics)))];
+    return [
+      "all",
+      ...Array.from(new Set(source.flatMap((exam) => exam.topics))).sort((left, right) =>
+        left.localeCompare(right, undefined, { sensitivity: "base", numeric: true })
+      )
+    ];
   }, [activeSubject, selectedChapter]);
 
   function startQuiz(exam: MockExamSummary) {
@@ -102,7 +115,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
           <select
             value={selectedSubject}
             onChange={(event) => setSelectedSubject(event.target.value)}
-            className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+            className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
           >
             {subjectOptions.map((subject) => (
               <option key={subject} value={subject}>
@@ -110,10 +123,10 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
               </option>
             ))}
           </select>
-          <select value="all" disabled className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-muted-foreground">
+          <select value="all" disabled className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-muted-foreground">
             <option>Choose a subject first</option>
           </select>
-          <select value="all" disabled className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-muted-foreground">
+          <select value="all" disabled className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-muted-foreground">
             <option>Choose a chapter first</option>
           </select>
         </div>
@@ -155,7 +168,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
         <select
           value={selectedSubject}
           onChange={(event) => setSelectedSubject(event.target.value)}
-          className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+          className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
         >
           {subjectOptions.map((subject) => (
             <option key={subject} value={subject}>
@@ -169,7 +182,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
             setSelectedChapter(event.target.value);
             setSelectedTopic("all");
           }}
-          className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+          className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
         >
           {chapterOptions.map((chapter) => (
             <option key={chapter} value={chapter}>
@@ -180,7 +193,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
         <select
           value={selectedTopic}
           onChange={(event) => setSelectedTopic(event.target.value)}
-          className="h-11 rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+          className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
         >
           {topicOptions.map((topic) => (
             <option key={topic} value={topic}>

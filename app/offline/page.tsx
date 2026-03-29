@@ -1,12 +1,41 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { WifiOff } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export default function OfflinePage() {
+  const router = useRouter();
+  const [lastRoute, setLastRoute] = useState<string | null>(null);
+  const [lastRole, setLastRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedRoute = window.localStorage.getItem("psychboard-last-route");
+    const storedRole = window.localStorage.getItem("psychboard-last-role");
+    setLastRoute(storedRoute);
+    setLastRole(storedRole);
+  }, []);
+
+  const fallbackLabel = useMemo(() => {
+    if (lastRole === "admin") {
+      return "Open cached admin dashboard";
+    }
+
+    if (lastRole === "student") {
+      return "Open cached student dashboard";
+    }
+
+    return "Open last cached page";
+  }, [lastRole]);
+
   return (
     <main className="container-shell flex min-h-screen items-center justify-center py-10">
       <Card className="w-full max-w-xl rounded-[32px] border bg-white/90 shadow-soft backdrop-blur dark:bg-card/90">
@@ -25,6 +54,15 @@ export default function OfflinePage() {
             <p className="mt-2">Open the installed PWA while online first so your student dashboard, flashcards, quizzes, and mock exam launcher can be cached for offline use.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-3">
+            {lastRoute ? (
+              <button
+                type="button"
+                onClick={() => router.push(lastRoute as any)}
+                className={buttonVariants()}
+              >
+                {fallbackLabel}
+              </button>
+            ) : null}
             <Link href="/" className={buttonVariants()}>
               Back to home
             </Link>

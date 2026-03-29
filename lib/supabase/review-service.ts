@@ -1,6 +1,13 @@
 import type { AttemptResult, MockExamSummary, ReviewQuestion } from "@/lib/types";
 import type { createClient } from "@/lib/supabase/server";
-import { detectImportTypeFromTitle, inferChapterLabel, stripChapterFromTopic, stripImportPrefix } from "@/lib/review-content";
+import {
+  compareChapterLabels,
+  detectImportTypeFromTitle,
+  inferChapterLabel,
+  stripChapterFromTopic,
+  stripImportPrefix,
+  stripUploadSuffix
+} from "@/lib/review-content";
 import type { ImportType } from "@/lib/types";
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -38,7 +45,7 @@ export async function getMockExamSummaries(
   return (data ?? [])
     .filter((exam: any) => detectImportTypeFromTitle(exam.title ?? "") === contentType)
     .flatMap<MockExamSummary>((exam: any) => {
-      const normalizedTitle = stripImportPrefix(exam.title ?? "");
+      const normalizedTitle = stripUploadSuffix(stripImportPrefix(exam.title ?? ""));
       const subject = exam.subjects?.name ?? "Unassigned Subject";
       const chapterGroups = new Map<
         string,
@@ -71,16 +78,20 @@ export async function getMockExamSummaries(
         ];
       }
 
-      return Array.from(chapterGroups.entries()).map(([chapterLabel, entries]) => ({
-        id: `${exam.id}::${chapterLabel}`,
-        sourceExamId: exam.id,
-        title: normalizedTitle,
-        subject,
-        chapter: chapterLabel,
-        topics: Array.from(new Set(entries.map((entry) => stripChapterFromTopic(entry.topicName)))),
-        questionCount: entries.length,
-        topicCount: new Set(entries.map((entry) => entry.topicId).filter(Boolean)).size
-      }));
+      return Array.from(chapterGroups.entries())
+        .sort(([leftChapter], [rightChapter]) => compareChapterLabels(leftChapter, rightChapter))
+        .map(([chapterLabel, entries]) => ({
+          id: `${exam.id}::${chapterLabel}`,
+          sourceExamId: exam.id,
+          title: normalizedTitle,
+          subject,
+          chapter: chapterLabel,
+          topics: Array.from(new Set(entries.map((entry) => stripChapterFromTopic(entry.topicName)))).sort((left, right) =>
+            left.localeCompare(right, undefined, { sensitivity: "base", numeric: true })
+          ),
+          questionCount: entries.length,
+          topicCount: new Set(entries.map((entry) => entry.topicId).filter(Boolean)).size
+        }));
     });
 }
 

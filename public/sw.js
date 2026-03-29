@@ -1,7 +1,8 @@
-const APP_SHELL_CACHE = "psychboard-app-shell-v3";
-const PAGE_CACHE = "psychboard-pages-v3";
-const DATA_CACHE = "psychboard-data-v3";
+const APP_SHELL_CACHE = "psychboard-app-shell-v4";
+const PAGE_CACHE = "psychboard-pages-v4";
+const DATA_CACHE = "psychboard-data-v4";
 const OFFLINE_URL = "/offline";
+const LAST_PAGE_FALLBACK_KEY = "/__offline-last-page__";
 const STATIC_ASSETS = [
   "/",
   OFFLINE_URL,
@@ -17,6 +18,20 @@ function isStaticAsset(url) {
 
 function isRouteDataRequest(url) {
   return url.searchParams.has("_rsc") || url.pathname.startsWith("/_next/");
+}
+
+async function rememberLastPage(request, response) {
+  if (!response || response.status !== 200) {
+    return;
+  }
+
+  const requestUrl = new URL(request.url);
+  if (requestUrl.pathname === OFFLINE_URL) {
+    return;
+  }
+
+  const cache = await caches.open(PAGE_CACHE);
+  await cache.put(LAST_PAGE_FALLBACK_KEY, response.clone());
 }
 
 self.addEventListener("install", (event) => {
@@ -56,11 +71,18 @@ self.addEventListener("fetch", (event) => {
         .then((response) => {
           const responseClone = response.clone();
           caches.open(PAGE_CACHE).then((cache) => cache.put(event.request, responseClone));
+          void rememberLastPage(event.request, response.clone());
           return response;
         })
         .catch(async () => {
           const cachedPage = await caches.match(event.request);
-          return cachedPage || caches.match(OFFLINE_URL);
+          const lastKnownPage = await caches.match(LAST_PAGE_FALLBACK_KEY);
+
+          if (requestUrl.pathname === "/") {
+            return lastKnownPage || cachedPage || caches.match(OFFLINE_URL);
+          }
+
+          return cachedPage || lastKnownPage || caches.match(OFFLINE_URL);
         })
     );
     return;

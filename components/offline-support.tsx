@@ -4,9 +4,15 @@ import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { listQueuedAttempts, markQueuedAttemptSynced } from "@/lib/offline-exam-store";
 
-const STUDENT_OFFLINE_ROUTES = [
+const SHARED_OFFLINE_ROUTES = [
   "/",
   "/offline",
+  "/profile",
+  "/settings"
+];
+
+const STUDENT_OFFLINE_ROUTES = [
+  ...SHARED_OFFLINE_ROUTES,
   "/student",
   "/student/flashcards",
   "/student/mock-exams",
@@ -14,6 +20,16 @@ const STUDENT_OFFLINE_ROUTES = [
   "/student/reviewers",
   "/student/offline-study",
   "/student/results/offline"
+];
+
+const ADMIN_OFFLINE_ROUTES = [
+  ...SHARED_OFFLINE_ROUTES,
+  "/admin",
+  "/admin/imports/exams",
+  "/admin/imports/quizzes",
+  "/admin/imports/flashcards",
+  "/admin/question-bank",
+  "/admin/reviewers"
 ];
 
 const WARMED_ROUTES_KEY = "psychboard-offline-warmed";
@@ -32,7 +48,7 @@ export function OfflineSupport() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined" || loading || userRole !== "student" || !userId) {
+    if (typeof window === "undefined" || loading || !userId || !userRole) {
       return;
     }
 
@@ -41,10 +57,12 @@ export function OfflineSupport() {
       return;
     }
 
+    const routesToWarm = userRole === "admin" ? ADMIN_OFFLINE_ROUTES : STUDENT_OFFLINE_ROUTES;
+
     const warmRoutes = async () => {
       try {
         await Promise.all(
-          STUDENT_OFFLINE_ROUTES.map((route) =>
+          routesToWarm.map((route) =>
             fetch(route, {
               credentials: "include",
               headers: {

@@ -26,6 +26,9 @@ import { FloatingPomodoroWidget } from "@/components/study-technique/floating-po
 import { PwaInstallGuide } from "@/components/pwa-install-guide";
 import { createClient } from "@/lib/supabase/client";
 
+const LAST_ROLE_STORAGE_KEY = "psychboard-last-role";
+const LAST_ROUTE_STORAGE_KEY = "psychboard-last-route";
+
 type NavItem = {
   href: string;
   label: string;
@@ -160,11 +163,20 @@ export function AppShell({
     setIsSidebarOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(LAST_ROLE_STORAGE_KEY, role);
+    window.localStorage.setItem(LAST_ROUTE_STORAGE_KEY, pathname);
+  }, [pathname, role]);
+
   const sidebar = (
     <aside
       className={cn(
         "flex h-full max-h-none min-h-0 flex-col rounded-[22px] border bg-card/95 p-4 text-card-foreground shadow-soft backdrop-blur sm:p-5",
-        "lg:sticky lg:top-6 lg:block lg:max-h-[calc(100vh-2rem)] lg:rounded-[28px]",
+        "lg:sticky lg:top-6 lg:block lg:h-[calc(100vh-3rem)] lg:max-h-[calc(100vh-3rem)] lg:self-start lg:rounded-[28px]",
         isSidebarOpen ? "block" : "hidden lg:block"
       )}
     >
@@ -229,7 +241,7 @@ export function AppShell({
   return (
     <div className="min-h-screen">
       <div className="container-shell py-4 sm:py-6">
-        <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+        <div className="grid gap-6 lg:items-start lg:grid-cols-[260px_1fr]">
           <div className="hidden lg:block">{sidebar}</div>
           <main className="min-w-0 space-y-5 sm:space-y-6">
             {role === "student" ? <PwaInstallGuide /> : null}
