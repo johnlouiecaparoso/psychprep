@@ -76,12 +76,12 @@ function StudentSidebarActions() {
 
   const actionClassName = (href: string) =>
     cn(
-      "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
+      "flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
       pathname === href ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
     );
 
   return (
-    <div className="mt-4 space-y-2 border-t pt-4">
+    <div className="mt-4 w-full self-stretch space-y-2 pt-4">
       <Link href="/profile" className={actionClassName("/profile")}>
         <User className="h-4 w-4" />
         Profile
@@ -123,12 +123,12 @@ function AdminSidebarActions() {
 
   const actionClassName = (href: string) =>
     cn(
-      "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
+      "flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
       pathname === href ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
     );
 
   return (
-    <div className="mt-4 space-y-2 border-t pt-4">
+    <div className="mt-4 w-full self-stretch space-y-2 pt-4">
       <Link href="/settings" className={actionClassName("/settings")}>
         <Settings className="h-4 w-4" />
         Settings
@@ -224,9 +224,11 @@ export function AppShell({
           );
         })}
       </nav>
-      {role === "student" ? <StudentSidebarActions /> : null}
-      {role === "admin" ? <AdminSidebarActions /> : null}
-      <div className="mt-6 shrink-0 rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground sm:mt-8">
+      <div className="mt-4 w-full self-stretch border-t pt-4">
+        {role === "student" ? <StudentSidebarActions /> : null}
+        {role === "admin" ? <AdminSidebarActions /> : null}
+      </div>
+      <div className="mt-6 w-full shrink-0 self-stretch rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground sm:mt-8">
         <div className="mb-2 flex items-center gap-2 font-semibold">
           <UserRound className="h-4 w-4" />
           {role === "student" ? "Study with structure" : "Manage learning content"}

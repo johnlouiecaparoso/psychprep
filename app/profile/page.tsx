@@ -21,7 +21,7 @@ export default function ProfilePage() {
     email: ""
   });
   const supabase = useMemo(() => (typeof window === "undefined" ? null : createClient()), []);
-  const shellRole: Role = (userRole as Role) || "student";
+  const shellRole: Role = userRole === "admin" || userRole === "instructor" ? "admin" : "student";
 
   useEffect(() => {
     if (!authLoading && user && supabase) {

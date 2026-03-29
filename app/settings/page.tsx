@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
-  const shellRole: Role = (userRole as Role) || "student";
+  const shellRole: Role = userRole === "admin" || userRole === "instructor" ? "admin" : "student";
 
   useEffect(() => {
     setFormData(normalizePreferences(preferences));
