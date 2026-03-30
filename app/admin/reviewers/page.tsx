@@ -3,10 +3,19 @@ import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { getReviewMaterials } from "@/lib/supabase/review-materials-service";
+import type { ReviewMaterial } from "@/lib/types";
 
 export default async function AdminReviewersPage() {
   const supabase = await createClient();
-  const materials = await getReviewMaterials(supabase);
+  let materials: ReviewMaterial[] = [];
+  let errorMessage: string | null = null;
+
+  try {
+    materials = await getReviewMaterials(supabase);
+  } catch (error) {
+    console.error("Admin reviewers load error:", error);
+    errorMessage = error instanceof Error ? error.message : "Unable to load reviewer materials right now.";
+  }
 
   return (
     <AppShell
@@ -32,7 +41,9 @@ export default async function AdminReviewersPage() {
           <CardTitle>Uploaded reviewers</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {materials.length === 0 ? (
+          {errorMessage ? (
+            <p className="text-sm text-rose-600">{errorMessage}</p>
+          ) : materials.length === 0 ? (
             <p className="text-sm text-muted-foreground">No reviewer PDFs uploaded yet.</p>
           ) : (
             materials.map((material) => (

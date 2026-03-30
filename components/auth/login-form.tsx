@@ -36,7 +36,7 @@ export function LoginForm() {
     try {
       setSubmitError("");
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password
       });
@@ -45,8 +45,12 @@ export function LoginForm() {
         throw error;
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      if (!data.session) {
+        setSubmitError("Your account still needs email confirmation before you can sign in.");
+        return;
+      }
+
+      window.location.assign("/dashboard");
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Unable to sign in.");
     }

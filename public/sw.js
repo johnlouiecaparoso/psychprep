@@ -8,12 +8,11 @@ const STATIC_ASSETS = [
   OFFLINE_URL,
   "/manifest.webmanifest",
   "/icons/icon-192.svg",
-  "/icons/icon-512.svg",
-  "/favicon.ico"
+  "/icons/icon-512.svg"
 ];
 
 function isStaticAsset(url) {
-  return url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname === "/manifest.webmanifest" || url.pathname === "/favicon.ico";
+  return url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname === "/manifest.webmanifest";
 }
 
 function isRouteDataRequest(url) {

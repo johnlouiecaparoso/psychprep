@@ -81,6 +81,12 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
     ];
   }, [activeSubject, selectedChapter]);
 
+  const compactSelectClassName =
+    "min-w-0 h-10 w-full max-w-full rounded-xl border bg-background px-3 py-2 text-xs text-foreground sm:h-11 sm:rounded-2xl sm:px-4 sm:text-sm";
+
+  const disabledSelectClassName =
+    "min-w-0 h-10 w-full max-w-full rounded-xl border bg-background px-3 py-2 text-xs text-muted-foreground sm:h-11 sm:rounded-2xl sm:px-4 sm:text-sm";
+
   function startQuiz(exam: MockExamSummary) {
     const limit = limits[exam.id] ?? String(Math.min(10, exam.questionCount));
     const defaultDuration = Math.max(Number.parseInt(limit, 10) * 2, 10);
@@ -115,7 +121,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
           <select
             value={selectedSubject}
             onChange={(event) => setSelectedSubject(event.target.value)}
-            className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+            className={compactSelectClassName}
           >
             {subjectOptions.map((subject) => (
               <option key={subject} value={subject}>
@@ -123,10 +129,10 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
               </option>
             ))}
           </select>
-          <select value="all" disabled className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-muted-foreground">
+          <select value="all" disabled className={disabledSelectClassName}>
             <option>Choose a subject first</option>
           </select>
-          <select value="all" disabled className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-muted-foreground">
+          <select value="all" disabled className={disabledSelectClassName}>
             <option>Choose a chapter first</option>
           </select>
         </div>
@@ -168,7 +174,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
         <select
           value={selectedSubject}
           onChange={(event) => setSelectedSubject(event.target.value)}
-          className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+          className={compactSelectClassName}
         >
           {subjectOptions.map((subject) => (
             <option key={subject} value={subject}>
@@ -182,7 +188,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
             setSelectedChapter(event.target.value);
             setSelectedTopic("all");
           }}
-          className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+          className={compactSelectClassName}
         >
           {chapterOptions.map((chapter) => (
             <option key={chapter} value={chapter}>
@@ -193,7 +199,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
         <select
           value={selectedTopic}
           onChange={(event) => setSelectedTopic(event.target.value)}
-          className="min-w-0 h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
+          className={compactSelectClassName}
         >
           {topicOptions.map((topic) => (
             <option key={topic} value={topic}>

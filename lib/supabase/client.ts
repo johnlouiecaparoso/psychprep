@@ -8,8 +8,7 @@ export function createClient() {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: true,
-        storageKey: "psychboard-auth"
+        detectSessionInUrl: true
       }
     }
   );
