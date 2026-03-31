@@ -234,7 +234,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
               </CardHeader>
               <CardContent className={isOpen ? "space-y-4" : "hidden"}>
                 <div className="flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                  <span>{exam.questionCount} questions</span>
+                  <span>{Math.min(exam.questionCount, 100)} questions</span>
                   <span>{exam.topicCount} topics</span>
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">

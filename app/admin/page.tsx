@@ -9,12 +9,12 @@ import { ContentResetPanel } from "@/components/admin/content-reset-panel";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { detectImportTypeFromTitle } from "@/lib/review-content";
+import { detectImportTypeFromTitle, inferChapterLabel } from "@/lib/review-content";
 
 export default async function AdminPage() {
   const supabase = await createClient();
 
-  const [studentsRes, studentProfilesRes, questionsRes, uploadsRes, failedImportsRes, attemptsRes, answersRes, mockExamsRes, reviewersRes] = await Promise.all([
+  const [studentsRes, studentProfilesRes, questionsRes, uploadsRes, failedImportsRes, attemptsRes, answersRes, mockExamsRes, examQuestionsRes, reviewersRes] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student"),
     supabase
       .from("profiles")
@@ -27,8 +27,9 @@ export default async function AdminPage() {
     supabase.from("upload_errors").select("id", { count: "exact", head: true }),
     supabase.from("exam_attempts").select("score, mock_exams(title, subjects(name))").not("submitted_at", "is", null),
     supabase.from("exam_answers").select("is_correct, exam_questions(topics(name))"),
-    supabase.from("mock_exams").select("id, title"),
-    supabase.from("review_materials").select("id", { count: "exact", head: true })
+    supabase.from("mock_exams").select("id, title, subjects(name)"),
+    supabase.from("exam_questions").select("mock_exam_id, topics(name)"),
+    supabase.from("review_materials").select("id, subject, topic")
   ]);
 
   const subjectMap = new Map<string, number[]>();
@@ -80,15 +81,62 @@ export default async function AdminPage() {
     exam: 0,
     quiz: 0,
     flashcard: 0,
-    reviewer: reviewersRes.count ?? 0
+    reviewer: (reviewersRes.data ?? []).length
   };
+  const subjectBreakdown = {
+    exam: new Map<string, { count: number; chapters: Map<string, number> }>(),
+    quiz: new Map<string, { count: number; chapters: Map<string, number> }>(),
+    flashcard: new Map<string, { count: number; chapters: Map<string, number> }>(),
+    reviewer: new Map<string, { count: number; chapters: Map<string, number> }>()
+  };
+
+  const examTypeById = new Map<string, { type: "exam" | "quiz" | "flashcard"; subject: string }>();
 
   (mockExamsRes.data ?? []).forEach((exam: any) => {
     const type = detectImportTypeFromTitle(exam.title ?? "");
     if (type) {
       contentCounts[type] += 1;
+      const subjectName = exam.subjects?.name ?? "Unassigned Subject";
+      const current = subjectBreakdown[type].get(subjectName) ?? { count: 0, chapters: new Map<string, number>() };
+      current.count += 1;
+      subjectBreakdown[type].set(subjectName, current);
+      examTypeById.set(exam.id as string, { type, subject: subjectName });
     }
   });
+
+  (examQuestionsRes.data ?? []).forEach((question: any) => {
+    const examMeta = examTypeById.get(question.mock_exam_id as string);
+    if (!examMeta) {
+      return;
+    }
+
+    const chapter = inferChapterLabel(question.topics?.name ?? null) ?? "General";
+    const subjectEntry = subjectBreakdown[examMeta.type].get(examMeta.subject);
+    if (!subjectEntry) {
+      return;
+    }
+    subjectEntry.chapters.set(chapter, (subjectEntry.chapters.get(chapter) ?? 0) + 1);
+  });
+
+  (reviewersRes.data ?? []).forEach((material: any) => {
+    const subjectName = material.subject ?? "Unassigned Subject";
+    const chapter = material.topic ?? "General";
+    const current = subjectBreakdown.reviewer.get(subjectName) ?? { count: 0, chapters: new Map<string, number>() };
+    current.count += 1;
+    current.chapters.set(chapter, (current.chapters.get(chapter) ?? 0) + 1);
+    subjectBreakdown.reviewer.set(subjectName, current);
+  });
+
+  const mapBreakdown = (value: Map<string, { count: number; chapters: Map<string, number> }>) =>
+    Array.from(value.entries())
+      .map(([subject, data]) => ({
+        subject,
+        count: data.count,
+        chapters: Array.from(data.chapters.entries())
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }))
+      }))
+      .sort((a, b) => a.subject.localeCompare(b.subject, undefined, { sensitivity: "base", numeric: true }));
 
   return (
     <AppShell
@@ -125,7 +173,15 @@ export default async function AdminPage() {
           </div>
         </CardContent>
       </Card>
-      <ContentResetPanel counts={contentCounts} />
+      <ContentResetPanel
+        counts={contentCounts}
+        subjectBreakdown={{
+          exam: mapBreakdown(subjectBreakdown.exam),
+          quiz: mapBreakdown(subjectBreakdown.quiz),
+          flashcard: mapBreakdown(subjectBreakdown.flashcard),
+          reviewer: mapBreakdown(subjectBreakdown.reviewer)
+        }}
+      />
       <Card>
         <CardHeader>
           <CardTitle>Recent student signups</CardTitle>

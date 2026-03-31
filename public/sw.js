@@ -3,6 +3,10 @@ const PAGE_CACHE = "psychboard-pages-v4";
 const DATA_CACHE = "psychboard-data-v4";
 const OFFLINE_URL = "/offline";
 const LAST_PAGE_FALLBACK_KEY = "/__offline-last-page__";
+const IS_DEV_HOST =
+  self.location.hostname === "localhost" ||
+  self.location.hostname === "127.0.0.1" ||
+  self.location.hostname === "0.0.0.0";
 const STATIC_ASSETS = [
   "/",
   OFFLINE_URL,
@@ -34,6 +38,11 @@ async function rememberLastPage(request, response) {
 }
 
 self.addEventListener("install", (event) => {
+  if (IS_DEV_HOST) {
+    self.skipWaiting();
+    return;
+  }
+
   event.waitUntil(
     caches.open(APP_SHELL_CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
   );
@@ -41,6 +50,18 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  if (IS_DEV_HOST) {
+    event.waitUntil(
+      caches.keys().then((keys) =>
+        Promise.all(
+          keys.filter((key) => key.startsWith("psychboard-")).map((key) => caches.delete(key))
+        )
+      )
+    );
+    self.clients.claim();
+    return;
+  }
+
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
@@ -54,6 +75,10 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (IS_DEV_HOST) {
+    return;
+  }
+
   if (event.request.method !== "GET") {
     return;
   }

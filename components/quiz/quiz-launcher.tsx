@@ -3,12 +3,11 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronDown, Download, Shuffle } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOfflineStudyPack } from "@/components/exam/use-offline-study-pack";
 import { compareChapterLabels } from "@/lib/review-content";
 import type { MockExamSummary } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
   const router = useRouter();
@@ -260,7 +259,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
                     onChange={(event) => setLimits((prev) => ({ ...prev, [exam.id]: event.target.value }))}
                     className="h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
                   >
-                    {[5, 10, 15, 20, exam.questionCount]
+                    {[5, 10, 15, 20, 25, 30, 35, 40]
                       .filter((value, index, array) => value <= exam.questionCount && array.indexOf(value) === index)
                       .sort((a, b) => a - b)
                       .map((value) => (
@@ -293,19 +292,10 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
                     onChange={(event) => setShuffle((prev) => ({ ...prev, [exam.id]: event.target.checked }))}
                   />
                 </label>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3">
                   <Button className="w-full" onClick={() => startQuiz(exam)}>
                     Start quiz
                   </Button>
-                  <a
-                    href={`/student/mock-exams/${exam.sourceExamId}?${new URLSearchParams({
-                      ...(exam.chapter ? { chapter: exam.chapter } : {}),
-                      ...(selectedTopic !== "all" ? { topic: selectedTopic } : {})
-                    }).toString()}`}
-                    className={cn(buttonVariants({ variant: "outline" }), "w-full")}
-                  >
-                    Full exam
-                  </a>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Button variant="outline" className="w-full" onClick={() => void downloadPack(exam)}>

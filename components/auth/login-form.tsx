@@ -50,7 +50,8 @@ export function LoginForm() {
         return;
       }
 
-      window.location.assign("/dashboard");
+      router.replace("/dashboard");
+      router.refresh();
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Unable to sign in.");
     }

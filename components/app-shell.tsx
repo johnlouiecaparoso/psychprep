@@ -2,18 +2,22 @@
 
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BookOpenText,
+  Bot,
   BrainCircuit,
   Download,
   FileSpreadsheet,
   LayoutDashboard,
   Layers3,
+  Lightbulb,
+  ListChecks,
   LogOut,
   Menu,
   Settings,
   ShieldCheck,
+  SquareLibrary,
   User,
   UserRound,
   X
@@ -51,9 +55,21 @@ const navByRole: Record<Role, NavItem[]> = {
     { href: "/student/quiz", label: "Quick Quiz", icon: Layers3 },
     { href: "/student/flashcards", label: "Flashcards", icon: Layers3 },
     { href: "/student/reviewers", label: "Reviewers", icon: BookOpenText },
+    { href: "/student/study-technique", label: "Study Technique", icon: Lightbulb },
+    { href: "/student/study-tasks", label: "Study Tasks", icon: ListChecks },
+    { href: "/student/subjects", label: "Subjects", icon: SquareLibrary },
+    { href: "/student/ai-helper", label: "AI Helper", icon: Bot },
     { href: "/student/offline-downloads", label: "Offline Downloads", icon: Download }
   ]
 };
+
+const studentPrimaryNav = [
+  "/student",
+  "/student/mock-exams",
+  "/student/quiz",
+  "/student/flashcards",
+  "/student/reviewers"
+] as const;
 
 function StudentSidebarActions() {
   const pathname = usePathname();
@@ -76,12 +92,12 @@ function StudentSidebarActions() {
 
   const actionClassName = (href: string) =>
     cn(
-      "flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
+      "flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition sm:rounded-2xl sm:py-3",
       pathname === href ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
     );
 
   return (
-    <div className="mt-4 w-full self-stretch space-y-2 pt-4">
+    <div className="w-full self-stretch space-y-2">
       <Link href="/profile" className={actionClassName("/profile")}>
         <User className="h-4 w-4" />
         Profile
@@ -93,7 +109,7 @@ function StudentSidebarActions() {
       <button
         type="button"
         onClick={() => void handleLogout()}
-        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground sm:rounded-2xl sm:py-3"
       >
         <LogOut className="h-4 w-4" />
         Logout
@@ -123,12 +139,12 @@ function AdminSidebarActions() {
 
   const actionClassName = (href: string) =>
     cn(
-      "flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
+      "flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition sm:rounded-2xl sm:py-3",
       pathname === href ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
     );
 
   return (
-    <div className="mt-4 w-full self-stretch space-y-2 pt-4">
+    <div className="w-full self-stretch space-y-2">
       <Link href="/settings" className={actionClassName("/settings")}>
         <Settings className="h-4 w-4" />
         Settings
@@ -136,7 +152,7 @@ function AdminSidebarActions() {
       <button
         type="button"
         onClick={() => void handleLogout()}
-        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground sm:rounded-2xl sm:py-3"
       >
         <LogOut className="h-4 w-4" />
         Logout
@@ -157,7 +173,28 @@ export function AppShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const isQuizMode = searchParams.get("mode") === "quiz";
+
+  const isNavItemActive = (href: string) => {
+    const isSectionRoot = href === `/${role}` || href === "/admin";
+
+    if (role === "student") {
+      const isMockExamDetail = pathname.startsWith("/student/mock-exams/");
+
+      if (href === "/student/quiz" && (pathname === "/student/quiz" || (isMockExamDetail && isQuizMode))) {
+        return true;
+      }
+
+      if (href === "/student/mock-exams" && isMockExamDetail && isQuizMode) {
+        return false;
+      }
+    }
+
+    return isSectionRoot ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   useEffect(() => {
     setIsSidebarOpen(false);
@@ -175,7 +212,7 @@ export function AppShell({
   const sidebar = (
     <aside
       className={cn(
-        "flex h-full max-h-none min-h-0 flex-col rounded-[22px] border bg-card/95 p-4 text-card-foreground shadow-soft backdrop-blur sm:p-5",
+        "flex h-full min-h-0 flex-col overflow-y-auto rounded-[22px] border bg-card p-4 text-card-foreground shadow-soft sm:p-5 lg:overflow-y-auto",
         "lg:sticky lg:top-6 lg:block lg:h-[calc(100vh-3rem)] lg:max-h-[calc(100vh-3rem)] lg:self-start lg:rounded-[28px]",
         isSidebarOpen ? "block" : "hidden lg:block"
       )}
@@ -199,43 +236,94 @@ export function AppShell({
           <X className="h-4 w-4" />
         </button>
       </div>
-      <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-        {navByRole[role].map((item) => {
-          const Icon = item.icon;
-          const isSectionRoot = item.href === `/${role}` || item.href === "/admin";
-          const isActive = isSectionRoot
-            ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(`${item.href}/`);
+      <div className="min-h-0 flex flex-1 flex-col">
+        <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          {role === "student" ? (
+            <>
+              {navByRole.student
+                .filter((item) => studentPrimaryNav.includes(item.href as (typeof studentPrimaryNav)[number]))
+                .map((item) => {
+                  const Icon = item.icon;
+                  const isActive = isNavItemActive(item.href);
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href as any}
-              className={cn(
-                "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
-                isActive
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="min-w-0 break-words">{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-      <div className="mt-4 w-full self-stretch border-t pt-4">
-        {role === "student" ? <StudentSidebarActions /> : null}
-        {role === "admin" ? <AdminSidebarActions /> : null}
-      </div>
-      <div className="mt-6 w-full shrink-0 self-stretch rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground sm:mt-8">
-        <div className="mb-2 flex items-center gap-2 font-semibold">
-          <UserRound className="h-4 w-4" />
-          {role === "student" ? "Study with structure" : "Manage learning content"}
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href as any}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition sm:rounded-2xl sm:py-3",
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="min-w-0 break-words">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              <div className="mt-2 px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Study tools
+              </div>
+              {navByRole.student
+                .filter((item) => !studentPrimaryNav.includes(item.href as (typeof studentPrimaryNav)[number]))
+                .map((item) => {
+                  const Icon = item.icon;
+                  const isActive = isNavItemActive(item.href);
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href as any}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition sm:rounded-2xl sm:py-3",
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="min-w-0 break-words">{item.label}</span>
+                    </Link>
+                  );
+                })}
+            </>
+          ) : (
+            navByRole[role].map((item) => {
+              const Icon = item.icon;
+              const isActive = isNavItemActive(item.href);
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href as any}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition sm:rounded-2xl sm:py-3",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="min-w-0 break-words">{item.label}</span>
+                </Link>
+              );
+            })
+          )}
+        </nav>
+        <div className="mt-3 shrink-0 border-t pt-3">
+          {role === "student" ? <StudentSidebarActions /> : null}
+          {role === "admin" ? <AdminSidebarActions /> : null}
         </div>
-        {role === "student"
-          ? "Use quizzes, mock exams, flashcards, and reviewer PDFs together to strengthen weak topics."
-          : "Keep exam imports strict, reviewer PDFs organized, and analytics clear for every learner."}
+        <div className="mt-4 w-full shrink-0 self-stretch rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground sm:mt-5">
+          <div className="mb-2 flex items-center gap-2 font-semibold">
+            <UserRound className="h-4 w-4" />
+            {role === "student" ? "Study with structure" : "Manage learning content"}
+          </div>
+          {role === "student"
+            ? "Use quizzes, mock exams, flashcards, and reviewer PDFs together to strengthen weak topics."
+            : "Keep exam imports strict, reviewer PDFs organized, and analytics clear for every learner."}
+        </div>
       </div>
     </aside>
   );

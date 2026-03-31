@@ -9,6 +9,13 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import type { ImportType } from "@/lib/types";
 
 type ResettableContentType = ImportType | "reviewer";
+type SubjectBreakdownEntry = {
+  subject: string;
+  count: number;
+  chapters: { name: string; count: number }[];
+};
+
+type SubjectBreakdown = Record<ResettableContentType, SubjectBreakdownEntry[]>;
 
 const LABELS: Record<ResettableContentType, string> = {
   exam: "Exams",
@@ -18,15 +25,42 @@ const LABELS: Record<ResettableContentType, string> = {
 };
 
 export function ContentResetPanel({
-  counts
+  counts,
+  subjectBreakdown
 }: {
   counts: Record<ResettableContentType, number>;
+  subjectBreakdown: SubjectBreakdown;
 }) {
   const router = useRouter();
   const [busyType, setBusyType] = React.useState<ResettableContentType | null>(null);
   const [message, setMessage] = React.useState("");
-  const [confirmType, setConfirmType] = React.useState<ResettableContentType | null>(null);
+  const [confirmState, setConfirmState] = React.useState<{
+    contentType: ResettableContentType;
+    subjectName?: string;
+    chapterName?: string;
+  } | null>(null);
+  const [selectedSubjects, setSelectedSubjects] = React.useState<Record<ResettableContentType, string>>({
+    exam: "",
+    quiz: "",
+    flashcard: "",
+    reviewer: ""
+  });
+  const [selectedChapters, setSelectedChapters] = React.useState<Record<ResettableContentType, string>>({
+    exam: "",
+    quiz: "",
+    flashcard: "",
+    reviewer: ""
+  });
   const [successState, setSuccessState] = React.useState<{ contentType: ResettableContentType; deletedCount: number | null } | null>(null);
+
+  function getSelectedSubjectEntry(contentType: ResettableContentType) {
+    const selectedSubject = selectedSubjects[contentType];
+    if (!selectedSubject) {
+      return null;
+    }
+
+    return subjectBreakdown[contentType].find((entry) => entry.subject === selectedSubject) ?? null;
+  }
 
   function closeSuccessDialog() {
     setSuccessState(null);
@@ -34,12 +68,12 @@ export function ContentResetPanel({
   }
 
   async function handleReset() {
-    if (!confirmType) {
+    if (!confirmState) {
       return;
     }
 
     try {
-      setBusyType(confirmType);
+      setBusyType(confirmState.contentType);
       setMessage("");
 
       const response = await fetch("/api/admin/content/reset", {
@@ -47,19 +81,25 @@ export function ContentResetPanel({
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ contentType: confirmType })
+        body: JSON.stringify({
+          contentType: confirmState.contentType,
+          subjectName: confirmState.subjectName ?? null,
+          chapterName: confirmState.chapterName ?? null
+        })
       });
 
       const data = (await response.json()) as { deletedCount?: number; error?: string };
 
       if (!response.ok) {
-        throw new Error(data.error ?? `Failed to clear ${LABELS[confirmType].toLowerCase()}.`);
+        throw new Error(data.error ?? `Failed to clear ${LABELS[confirmState.contentType].toLowerCase()}.`);
       }
 
       const deletedCount = typeof data.deletedCount === "number" ? data.deletedCount : null;
-      setMessage(`${LABELS[confirmType]} cleared successfully.${deletedCount !== null ? ` Deleted: ${deletedCount}.` : ""}`);
-      setSuccessState({ contentType: confirmType, deletedCount });
-      setConfirmType(null);
+      setMessage(
+        `${LABELS[confirmState.contentType]}${confirmState.subjectName ? ` for ${confirmState.subjectName}` : ""}${confirmState.chapterName ? ` (${confirmState.chapterName})` : ""} cleared successfully.${deletedCount !== null ? ` Deleted: ${deletedCount}.` : ""}`
+      );
+      setSuccessState({ contentType: confirmState.contentType, deletedCount });
+      setConfirmState(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to clear content.");
     } finally {
@@ -81,11 +121,67 @@ export function ContentResetPanel({
             <div key={contentType} className="rounded-2xl border bg-muted/20 p-4">
               <p className="font-semibold">{LABELS[contentType]}</p>
               <p className="mt-1 text-sm text-muted-foreground">{counts[contentType]} items in the system</p>
+              {subjectBreakdown[contentType].length > 0 ? (
+                <div className="mt-3 space-y-2">
+                  <label className="text-sm font-medium">Delete one subject only</label>
+                  <select
+                    value={selectedSubjects[contentType]}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setSelectedSubjects((prev) => ({ ...prev, [contentType]: value }));
+                      setSelectedChapters((prev) => ({ ...prev, [contentType]: "" }));
+                    }}
+                    className="h-10 w-full rounded-xl border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Select subject</option>
+                    {subjectBreakdown[contentType].map((entry) => (
+                      <option key={`${contentType}-${entry.subject}`} value={entry.subject}>
+                        {entry.subject} ({entry.count})
+                      </option>
+                    ))}
+                  </select>
+
+                  {selectedSubjects[contentType] && getSelectedSubjectEntry(contentType)?.chapters?.length ? (
+                    <>
+                      <label className="text-sm font-medium">Optional chapter/topic filter</label>
+                      <select
+                        value={selectedChapters[contentType]}
+                        onChange={(event) =>
+                          setSelectedChapters((prev) => ({ ...prev, [contentType]: event.target.value }))
+                        }
+                        className="h-10 w-full rounded-xl border bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">All chapters/topics in selected subject</option>
+                        {(getSelectedSubjectEntry(contentType)?.chapters ?? []).map((entry) => (
+                          <option key={`${contentType}-${selectedSubjects[contentType]}-${entry.name}`} value={entry.name}>
+                            {entry.name} ({entry.count})
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  ) : null}
+
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    disabled={busyType !== null || !selectedSubjects[contentType]}
+                    onClick={() => {
+                      setConfirmState({
+                        contentType,
+                        subjectName: selectedSubjects[contentType],
+                        chapterName: selectedChapters[contentType] || undefined
+                      });
+                    }}
+                  >
+                    Delete selected scope
+                  </Button>
+                </div>
+              ) : null}
               <Button
                 className="mt-4 w-full"
                 variant="destructive"
                 disabled={busyType !== null}
-                onClick={() => setConfirmType(contentType)}
+                onClick={() => setConfirmState({ contentType })}
               >
                 {busyType === contentType ? "Clearing..." : `Clear ${LABELS[contentType]}`}
               </Button>
@@ -95,9 +191,9 @@ export function ContentResetPanel({
         {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       </CardContent>
 
-      <Dialog open={confirmType !== null} onOpenChange={(open) => (!open ? setConfirmType(null) : undefined)}>
+      <Dialog open={confirmState !== null} onOpenChange={(open) => (!open ? setConfirmState(null) : undefined)}>
         <DialogContent className="max-w-md rounded-[28px] border-destructive/20 p-0">
-          {confirmType ? (
+          {confirmState ? (
             <div className="overflow-hidden rounded-[28px]">
               <div className="border-b border-destructive/10 bg-destructive/5 px-6 py-5">
                 <div className="flex items-start gap-4">
@@ -106,10 +202,15 @@ export function ContentResetPanel({
                   </div>
                   <div className="space-y-2">
                     <DialogTitle className="text-xl font-semibold text-foreground">
-                      Delete all {LABELS[confirmType].toLowerCase()}?
+                      Delete
+                      {confirmState.subjectName ? ` ${confirmState.subjectName}` : " all"}
+                      {confirmState.chapterName ? ` (${confirmState.chapterName})` : ""}
+                      {` ${LABELS[confirmState.contentType].toLowerCase()}?`}
                     </DialogTitle>
                     <DialogDescription className="text-sm text-muted-foreground">
-                      This will permanently remove all {LABELS[confirmType].toLowerCase()} currently in the system. You can upload a new {LABELS[confirmType].slice(0, -1).toLowerCase()} file after deletion.
+                      This will permanently remove {confirmState.subjectName ? `${confirmState.subjectName} ` : "all "}
+                      {confirmState.chapterName ? `(${confirmState.chapterName}) ` : ""}
+                      {LABELS[confirmState.contentType].toLowerCase()} currently in the system. You can upload a new {LABELS[confirmState.contentType].slice(0, -1).toLowerCase()} file after deletion.
                     </DialogDescription>
                   </div>
                 </div>
@@ -121,11 +222,18 @@ export function ContentResetPanel({
                 </div>
 
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => setConfirmType(null)} disabled={busyType !== null}>
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => setConfirmState(null)} disabled={busyType !== null}>
                     Cancel
                   </Button>
-                  <Button variant="destructive" className="w-full sm:w-auto" onClick={() => void handleReset()} disabled={busyType !== null}>
-                    {busyType === confirmType ? `Deleting ${LABELS[confirmType].toLowerCase()}...` : `Delete ${LABELS[confirmType].toLowerCase()}`}
+                  <Button
+                    variant="destructive"
+                    className="w-full sm:w-auto"
+                    onClick={() => void handleReset()}
+                    disabled={busyType !== null}
+                  >
+                    {busyType === confirmState.contentType
+                      ? `Deleting ${LABELS[confirmState.contentType].toLowerCase()}...`
+                      : `Delete ${LABELS[confirmState.contentType].toLowerCase()}`}
                   </Button>
                 </div>
               </div>

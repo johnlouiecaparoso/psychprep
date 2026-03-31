@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Brain, CheckCircle2, Clock3, ListChecks } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PomodoroFocusTimer } from "@/components/study-technique/pomodoro-focus-timer";
-import { buildTechniqueTasks } from "@/lib/study-techniques";
 import type { CurrentStudyTechnique, StudyTechniqueRecord } from "@/lib/supabase/study-technique-types";
 import type { StudyTechnique } from "@/lib/types";
 
@@ -28,7 +27,6 @@ export function StudyTechniquePanel({
 }) {
   const activeTechnique = currentTechnique;
   const activeSlug = (activeTechnique?.slug ?? "practice_test") as StudyTechnique;
-  const tasks = buildTechniqueTasks(activeSlug, weakTopicNames);
 
   if (techniques.length === 0) {
     return (
@@ -44,7 +42,7 @@ export function StudyTechniquePanel({
   }
 
   return (
-    <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+    <section className="grid gap-6">
       <Card>
         <CardHeader>
           <CardTitle>Study technique module</CardTitle>
@@ -74,7 +72,10 @@ export function StudyTechniquePanel({
               const isCurrent = activeTechnique ? technique.id === activeTechnique.id : false;
 
               return (
-                <div key={technique.id} className={`rounded-2xl border p-4 ${isCurrent ? "border-primary bg-primary/5" : "border-border bg-muted/20"}`}>
+                <div
+                  key={technique.id}
+                  className={`flex h-full flex-col rounded-2xl border p-4 ${isCurrent ? "border-primary bg-primary/5" : "border-border bg-muted/20"}`}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-lg font-semibold break-words">{technique.name}</p>
                     {isCurrent ? <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">Active</span> : null}
@@ -82,7 +83,7 @@ export function StudyTechniquePanel({
                   <p className="mt-3 text-sm text-muted-foreground">{technique.description}</p>
                   <p className="mt-3 text-sm">{technique.impact_summary}</p>
                   <Button
-                    className="mt-4 w-full"
+                    className="mt-auto w-full"
                     variant={isCurrent ? "secondary" : "default"}
                     onClick={() => onApply(technique.slug)}
                     disabled={applyingTechnique !== null}
@@ -95,50 +96,7 @@ export function StudyTechniquePanel({
           </div>
         </CardContent>
       </Card>
-
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Today&apos;s study tasks</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-muted/40 p-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <ListChecks className="h-4 w-4" />
-                  {activeTechnique?.dashboard_task_label ?? "Recommended review tasks"}
-                </div>
-                <p className="mt-2 text-2xl font-bold">
-                  {activeSlug === "practice_test" ? availableExams : Math.max(weakTopicNames.length, 1)}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-muted/40 p-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Brain className="h-4 w-4" />
-                  Weak areas detected
-                </div>
-                <p className="mt-2 text-2xl font-bold">{weakTopicNames.length}</p>
-              </div>
-            </div>
-
-            <div className="space-y-3 text-sm">
-              {tasks.map((task) => (
-                <div key={task} className="flex items-start gap-3 rounded-2xl bg-muted/20 p-3">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span>{task}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-start gap-2 rounded-2xl bg-secondary px-4 py-3 text-sm text-secondary-foreground">
-              <Clock3 className="mt-0.5 h-4 w-4 shrink-0" />
-              Switching study mode does not erase your progress. It changes how your next review session is guided.
-            </div>
-          </CardContent>
-        </Card>
-
-        {activeSlug === "pomodoro" ? <PomodoroFocusTimer /> : null}
-      </div>
+      {activeSlug === "pomodoro" ? <PomodoroFocusTimer /> : null}
     </section>
   );
 }

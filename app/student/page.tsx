@@ -6,17 +6,15 @@ import { AppShell } from "@/components/app-shell";
 import { PerformanceChart } from "@/components/charts/performance-chart";
 import { WeakTopicsChart } from "@/components/charts/weak-topics-chart";
 import { StatCard } from "@/components/stat-card";
-import { StudyTechniquePanel } from "@/components/study-technique/study-technique-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
-import { DashboardService, type StudentStats, type PerformanceData, type RecentExam, type StudentStudyOverview, type SubjectSummary, type WeakTopic } from "@/lib/supabase/dashboard-service";
+import { DashboardService, type StudentStats, type PerformanceData, type RecentExam, type StudentStudyOverview, type WeakTopic } from "@/lib/supabase/dashboard-service";
 import { StudyTechniqueService } from "@/lib/supabase/study-technique-client";
-import type { CurrentStudyTechnique, StudyTechniqueRecord } from "@/lib/supabase/study-technique-types";
 import { ROLE_LABELS } from "@/lib/constants";
 import { getReadiness, cn } from "@/lib/utils";
-import type { StudyTechnique } from "@/lib/types";
+import type { CurrentStudyTechnique } from "@/lib/supabase/study-technique-types";
 
 export default function StudentPage() {
   const { userId, userRole, loading: authLoading } = useAuth();
@@ -25,10 +23,7 @@ export default function StudentPage() {
   const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
   const [recentExams, setRecentExams] = useState<RecentExam[]>([]);
   const [studyOverview, setStudyOverview] = useState<StudentStudyOverview | null>(null);
-  const [availableSubjects, setAvailableSubjects] = useState<SubjectSummary[]>([]);
-  const [studyTechniques, setStudyTechniques] = useState<StudyTechniqueRecord[]>([]);
   const [currentTechnique, setCurrentTechnique] = useState<CurrentStudyTechnique | null>(null);
-  const [applyingTechnique, setApplyingTechnique] = useState<StudyTechnique | null>(null);
   const [readinessScore, setReadinessScore] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,15 +35,13 @@ export default function StudentPage() {
       try {
         const dashboardService = new DashboardService();
         const studyTechniqueService = new StudyTechniqueService();
-        const [statsData, performanceData, weakTopicsData, recentExamsData, readinessData, studyOverviewData, subjectsData, techniquesData, currentTechniqueData] = await Promise.all([
+        const [statsData, performanceData, weakTopicsData, recentExamsData, readinessData, studyOverviewData, currentTechniqueData] = await Promise.all([
           dashboardService.getStudentStats(userId),
           dashboardService.getPerformanceData(userId),
           dashboardService.getWeakTopics(userId),
           dashboardService.getRecentExams(userId),
           dashboardService.getReadinessScore(userId),
           dashboardService.getStudyOverview(userId),
-          dashboardService.getAvailableSubjects(),
-          studyTechniqueService.getStudyTechniques(),
           studyTechniqueService.getCurrentStudyTechnique(userId)
         ]);
 
@@ -58,8 +51,6 @@ export default function StudentPage() {
         setRecentExams(recentExamsData);
         setReadinessScore(readinessData.score);
         setStudyOverview(studyOverviewData);
-        setAvailableSubjects(subjectsData);
-        setStudyTechniques(techniquesData);
         setCurrentTechnique(currentTechniqueData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load dashboard data");
@@ -75,49 +66,6 @@ export default function StudentPage() {
   const readiness = getReadiness(readinessScore);
   const role = userRole === "student" ? "student" : "student";
   const activeTechnique = currentTechnique;
-
-  async function handleApplyTechnique(technique: StudyTechnique) {
-    if (!userId) {
-      return;
-    }
-
-    try {
-      setApplyingTechnique(technique);
-      const studyTechniqueService = new StudyTechniqueService();
-      await studyTechniqueService.applyTechnique(technique);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("psychboard-active-study-technique", technique);
-        window.dispatchEvent(new CustomEvent("study-technique-changed", { detail: { technique } }));
-      }
-      const updatedTechnique = await studyTechniqueService.getCurrentStudyTechnique(userId);
-      setCurrentTechnique(updatedTechnique);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to apply study technique");
-    } finally {
-      setApplyingTechnique(null);
-    }
-  }
-
-  async function handleClearTechnique() {
-    if (!userId) {
-      return;
-    }
-
-    try {
-      setApplyingTechnique("practice_test");
-      const studyTechniqueService = new StudyTechniqueService();
-      await studyTechniqueService.clearCurrentTechnique();
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem("psychboard-active-study-technique");
-        window.dispatchEvent(new CustomEvent("study-technique-changed", { detail: { technique: "practice_test" } }));
-      }
-      setCurrentTechnique(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to clear study technique");
-    } finally {
-      setApplyingTechnique(null);
-    }
-  }
 
   if (loading || authLoading) {
     return (
@@ -147,16 +95,6 @@ export default function StudentPage() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((stat) => <StatCard key={stat.label} {...stat} />)}
       </section>
-
-      <StudyTechniquePanel
-        techniques={studyTechniques}
-        currentTechnique={currentTechnique}
-        weakTopicNames={weakTopics.map((topic) => topic.topic)}
-        availableExams={studyOverview?.availableExams ?? 0}
-        applyingTechnique={applyingTechnique}
-        onApply={handleApplyTechnique}
-        onClear={handleClearTechnique}
-      />
 
       <section className="grid gap-5 xl:grid-cols-[1fr_320px]">
         <Card>
@@ -211,24 +149,6 @@ export default function StudentPage() {
           </CardContent>
         </Card>
       </section>
-
-      <Card>
-        <CardHeader><CardTitle>All subjects</CardTitle></CardHeader>
-        <CardContent>
-          {availableSubjects.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No subjects available yet. Once you upload more reviewer, quiz, and flashcard content, they will appear here.</p>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {availableSubjects.map((subject) => (
-                <div key={subject.name} className="rounded-2xl bg-muted/40 p-4">
-                  <p className="font-semibold">{subject.name}</p>
-                  <p className="mt-2 text-sm text-muted-foreground">{subject.examCount} chapter{subject.examCount === 1 ? "" : "s"} available</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <section className="grid gap-5 xl:grid-cols-[1fr_320px]">
         <Card>

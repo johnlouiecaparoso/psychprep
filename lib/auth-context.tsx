@@ -136,19 +136,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let active = true;
 
-    const bootstrap = async () => {
-      setLoading(true);
-      const {
-        data: { session }
-      } = await supabase.auth.getSession();
-
-      if (!active) {
-        return;
-      }
-
-      const sessionUser = session?.user ?? null;
+    const applySessionState = async (sessionUser: User | null) => {
       setUser(sessionUser);
       syncPreferences(sessionUser);
+      setLoading(true);
 
       if (sessionUser) {
         await fetchUserRole(sessionUser);
@@ -161,27 +152,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    const bootstrap = async () => {
+      const {
+        data: { session }
+      } = await supabase.auth.getSession();
+
+      if (!active) {
+        return;
+      }
+
+      await applySessionState(session?.user ?? null);
+    };
+
     void bootstrap();
 
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange((_event, session) => {
       const sessionUser = session?.user ?? null;
-      setUser(sessionUser);
-      syncPreferences(sessionUser);
-      setLoading(true);
 
-      void (async () => {
-        if (sessionUser) {
-          await fetchUserRole(sessionUser);
-        } else {
-          setUserRole(null);
-        }
-
-        if (active) {
-          setLoading(false);
-        }
-      })();
+      // Keep the callback synchronous to avoid blocking Supabase auth internals.
+      setTimeout(() => {
+        void applySessionState(sessionUser);
+      }, 0);
     });
 
     return () => {

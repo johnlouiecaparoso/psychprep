@@ -7,6 +7,9 @@ import { getReviewMaterials } from "@/lib/supabase/review-materials-service";
 export default async function StudentReviewersPage() {
   const supabase = await createClient();
   const materials = await getReviewMaterials(supabase);
+  const subjects = Array.from(new Set(materials.map((material) => material.subject))).sort((left, right) =>
+    left.localeCompare(right, undefined, { sensitivity: "base", numeric: true })
+  );
 
   return (
     <AppShell
@@ -20,6 +23,24 @@ export default async function StudentReviewersPage() {
         </CardHeader>
         <CardContent>
           <OfflineReviewersClient materials={materials} />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Subjects</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {subjects.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No reviewer subjects available yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {subjects.map((subject) => (
+                <span key={subject} className="rounded-full bg-muted px-3 py-2 text-sm text-muted-foreground">
+                  {subject}
+                </span>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </AppShell>

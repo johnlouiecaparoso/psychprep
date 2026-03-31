@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, BrainCircuit, ChartColumn, FileSpreadsheet } from "lucide-react";
 import { PwaInstallButton } from "@/components/pwa-install-button";

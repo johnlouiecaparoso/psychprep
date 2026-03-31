@@ -61,9 +61,10 @@ export default async function StudentMockExamPage({
   });
   const sessionQuestions = filteredQuestions.length > 0 ? filteredQuestions : baseQuestions;
   const requestedLimit = Number.parseInt(resolvedSearchParams.limit ?? String(baseQuestions.length), 10);
+  const maxSessionItems = mode === "quiz" ? 40 : 100;
   const safeLimit = Number.isFinite(requestedLimit)
-    ? Math.min(Math.max(requestedLimit, 1), sessionQuestions.length)
-    : sessionQuestions.length;
+    ? Math.min(Math.max(requestedLimit, 1), sessionQuestions.length, maxSessionItems)
+    : Math.min(sessionQuestions.length, maxSessionItems);
   const requestedDurationMinutes = Number.parseInt(resolvedSearchParams.duration ?? "", 10);
   const fallbackDurationMinutes = mode === "quiz" ? Math.max(safeLimit * 2, 10) : 45;
   const durationMinutes = Number.isFinite(requestedDurationMinutes)
@@ -71,7 +72,7 @@ export default async function StudentMockExamPage({
     : fallbackDurationMinutes;
 
   let preparedQuestions: ReviewQuestion[] = shouldShuffle ? seededShuffle(sessionQuestions, seed) : sessionQuestions;
-  preparedQuestions = mode === "quiz" ? preparedQuestions.slice(0, safeLimit) : preparedQuestions;
+  preparedQuestions = preparedQuestions.slice(0, mode === "quiz" ? safeLimit : 100);
   const currentTechnique = user ? await getCurrentStudyTechniqueServer(user.id) : null;
   const techniqueFallback = currentTechnique ?? (await getStudyTechniquesServer())[0] ?? null;
   const studyTechnique = (techniqueFallback?.slug ?? "practice_test") as StudyTechnique;
