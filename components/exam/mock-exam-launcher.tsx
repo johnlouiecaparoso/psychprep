@@ -9,6 +9,24 @@ import { useOfflineStudyPack } from "@/components/exam/use-offline-study-pack";
 import { compareChapterLabels } from "@/lib/review-content";
 import type { MockExamSummary } from "@/lib/types";
 
+function formatExamSetLabel(value: string, fallbackIndex: number) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return `Exam ${fallbackIndex + 1}`;
+  }
+
+  if (/^chapter\b/i.test(trimmed)) {
+    return trimmed.replace(/^chapter\b/i, "Exam");
+  }
+
+  if (/^\d+$/.test(trimmed)) {
+    return `Exam ${trimmed}`;
+  }
+
+  return trimmed;
+}
+
 export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
   const router = useRouter();
   const [durations, setDurations] = React.useState<Record<string, string>>({});
@@ -33,9 +51,9 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
         exams: subjectExams
           .map((exam, index) => ({
             ...exam,
-            setLabel: exam.chapter ?? `Chapter ${index + 1}`
+            setLabel: formatExamSetLabel(exam.chapter ?? "", index)
           }))
-          .sort((left, right) => compareChapterLabels(left.chapter ?? left.setLabel, right.chapter ?? right.setLabel))
+          .sort((left, right) => compareChapterLabels(left.setLabel, right.setLabel))
       }))
       .sort((left, right) => left.subject.localeCompare(right.subject, undefined, { sensitivity: "base", numeric: true }));
   }, [exams]);
@@ -58,7 +76,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
 
     return [
       "all",
-      ...Array.from(new Set(activeSubject.exams.map((exam) => exam.chapter ?? exam.setLabel))).sort(compareChapterLabels)
+      ...Array.from(new Set(activeSubject.exams.map((exam) => exam.setLabel))).sort(compareChapterLabels)
     ];
   }, [activeSubject]);
 
@@ -69,7 +87,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
 
     const source = selectedChapter === "all"
       ? activeSubject.exams
-      : activeSubject.exams.filter((exam) => (exam.chapter ?? exam.setLabel) === selectedChapter);
+      : activeSubject.exams.filter((exam) => exam.setLabel === selectedChapter);
 
     return [
       "all",
@@ -114,6 +132,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
           <select
             value={selectedSubject}
             onChange={(event) => setSelectedSubject(event.target.value)}
+            aria-label="Select subject"
             className={compactSelectClassName}
           >
             {subjectOptions.map((subject) => (
@@ -122,11 +141,11 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
               </option>
             ))}
           </select>
-          <select value="all" disabled className={disabledSelectClassName}>
+          <select value="all" disabled aria-label="Chapter selection unavailable" className={disabledSelectClassName}>
             <option>Choose a subject first</option>
           </select>
-          <select value="all" disabled className={disabledSelectClassName}>
-            <option>Choose a chapter first</option>
+          <select value="all" disabled aria-label="Exam selection unavailable" className={disabledSelectClassName}>
+            <option>Choose an exam first</option>
           </select>
         </div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -141,7 +160,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
           >
             <h2 className="text-xl font-semibold">{subject}</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              {subjectExams.length} chapter{subjectExams.length === 1 ? "" : "s"}
+              {subjectExams.length} exam{subjectExams.length === 1 ? "" : "s"}
             </p>
           </button>
         ))}
@@ -159,7 +178,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
         </Button>
         <div className="min-w-0">
           <h2 className="break-words text-xl font-semibold sm:text-2xl">{activeSubject.subject}</h2>
-          <p className="text-sm text-muted-foreground">Choose a chapter to begin.</p>
+          <p className="text-sm text-muted-foreground">Choose an exam to begin.</p>
         </div>
       </div>
 
@@ -167,6 +186,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
         <select
           value={selectedSubject}
           onChange={(event) => setSelectedSubject(event.target.value)}
+          aria-label="Filter by subject"
           className={compactSelectClassName}
         >
           {subjectOptions.map((subject) => (
@@ -181,17 +201,19 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
             setSelectedChapter(event.target.value);
             setSelectedTopic("all");
           }}
+          aria-label="Filter by exam"
           className={compactSelectClassName}
         >
           {chapterOptions.map((chapter) => (
             <option key={chapter} value={chapter}>
-              {chapter === "all" ? "All chapters" : chapter}
+              {chapter === "all" ? "All exams" : chapter}
             </option>
           ))}
         </select>
         <select
           value={selectedTopic}
           onChange={(event) => setSelectedTopic(event.target.value)}
+          aria-label="Filter by topic"
           className={compactSelectClassName}
         >
           {topicOptions.map((topic) => (
@@ -205,7 +227,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
       <div className="grid gap-4 lg:gap-6 xl:grid-cols-2">
         {activeSubject.exams
           .filter((exam) => {
-            const chapterMatch = selectedChapter === "all" || (exam.chapter ?? exam.setLabel) === selectedChapter;
+            const chapterMatch = selectedChapter === "all" || exam.setLabel === selectedChapter;
             const topicMatch = selectedTopic === "all" || exam.topics.includes(selectedTopic);
             return chapterMatch && topicMatch;
           })
@@ -253,6 +275,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
                     step={5}
                     value={selectedDuration}
                     onChange={(event) => setDurations((prev) => ({ ...prev, [exam.id]: event.target.value }))}
+                    aria-label={`Exam time in minutes for ${exam.setLabel}`}
                     className="h-11 w-full rounded-2xl border bg-background px-4 py-2 text-sm text-foreground"
                   />
                 </div>

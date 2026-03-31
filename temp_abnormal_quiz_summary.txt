@@ -4,7 +4,7 @@ Chapter count with questions: 15
 
 Chapter 1: Chapter 1 -> 40 questions
 Chapter 2: Chapter 2 -> 35 questions
-Chapter 3: Clinical Assessment and -> 35 questions
+Chapter 3: Clinical Assessment and Diagnosis -> 35 questions
 Chapter 5: Chapter 5 -> 35 questions
 Chapter 6: Chapter 6 -> 35 questions
 Chapter 7: Chapter 7 -> 35 questions

@@ -152,6 +152,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    const revalidateSessionState = async () => {
+      const {
+        data: { session }
+      } = await supabase.auth.getSession();
+
+      if (!active) {
+        return;
+      }
+
+      const sessionUser = session?.user ?? null;
+      setUser(sessionUser);
+      syncPreferences(sessionUser);
+
+      if (sessionUser) {
+        void fetchUserRole(sessionUser);
+      } else {
+        setUserRole(null);
+      }
+    };
+
     const bootstrap = async () => {
       const {
         data: { session }
@@ -177,9 +197,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }, 0);
     });
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void revalidateSessionState();
+      }
+    };
+
+    const handleWindowFocus = () => {
+      void revalidateSessionState();
+    };
+
+    const handleOnline = () => {
+      void revalidateSessionState();
+    };
+
+    const handlePageShow = () => {
+      void revalidateSessionState();
+    };
+
+    window.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("pageshow", handlePageShow);
+
     return () => {
       active = false;
       subscription.unsubscribe();
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("pageshow", handlePageShow);
     };
   }, [supabase]);
 
