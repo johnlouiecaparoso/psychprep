@@ -257,6 +257,7 @@ export class DashboardService {
   }
 
   async getSubjectDashboardGraphData(studentId: string): Promise<SubjectDashboardGraphPoint[]> {
+    // Step 1: Fetch all questions grouped by subject and chapter
     const { data: questions, error: questionsError } = await this.client
       .from("exam_questions")
       .select("id, topics(name), subjects(name), mock_exams(title, subjects(name))");
@@ -276,6 +277,7 @@ export class DashboardService {
       );
     };
 
+    // Build complete chapter inventory per subject from ALL available content (exams + quizzes)
     (questions ?? []).forEach((question: any) => {
       const subjectName = question.subjects?.name ?? question.mock_exams?.subjects?.name ?? "Unassigned Subject";
       const chapterLabel = resolveChapterLabel(question.topics?.name, question.mock_exams?.title);
@@ -284,46 +286,55 @@ export class DashboardService {
       subjectChapters.set(subjectName, current);
     });
 
+    // Step 2: Fetch ALL exam and quiz attempts for this student
     const { data: attempts, error: attemptsError } = await this.client
       .from("exam_attempts")
-      .select("id, mock_exam_id")
+      .select("id, mock_exam_id, score, submitted_at")
       .eq("student_id", studentId)
-      .not("submitted_at", "is", null);
+      .not("submitted_at", "is", null)
+      .order("submitted_at", { ascending: true });
 
     if (attemptsError) {
       throw attemptsError;
     }
 
-    const subjectTakenChapters = new Map<string, Set<string>>();
     const attemptIds: string[] = [];
-
     (attempts ?? []).forEach((attempt: any) => {
       attemptIds.push(attempt.id);
     });
 
     const weakTopicCounts = new Map<string, number>();
     const attemptedChaptersBySubject = new Map<string, Set<string>>();
+    const subjectWeakTopicsDetail = new Map<string, Set<string>>();
 
+    // Step 3: Fetch answers from both exams and quizzes to calculate real performance data
     if (attemptIds.length > 0) {
       const { data: answers, error: answersError } = await this.client
         .from("exam_answers")
-        .select("is_correct, exam_questions(topics(name), subjects(name), mock_exams(title, subjects(name)))")
+        .select("is_correct, exam_questions(id, topics(name), subjects(name), mock_exams(title, subjects(name)))")
         .in("attempt_id", attemptIds);
 
       if (answersError) {
         throw answersError;
       }
 
+      // Track accuracy stats per subject-topic combination
       const statsBySubjectTopic = new Map<string, { correct: number; total: number }>();
+
       (answers ?? []).forEach((answer: any) => {
         const question = answer.exam_questions;
-        const subjectName = question?.subjects?.name ?? question?.mock_exams?.subjects?.name ?? "Unassigned Subject";
-        const topicName = question?.topics?.name ?? "General";
-        const chapterLabel = resolveChapterLabel(topicName, question?.mock_exams?.title);
+        if (!question) return;
+
+        const subjectName = question.subjects?.name ?? question.mock_exams?.subjects?.name ?? "Unassigned Subject";
+        const topicName = question.topics?.name ?? "General";
+        const chapterLabel = resolveChapterLabel(topicName, question.mock_exams?.title);
+
+        // Track which chapters have been attempted
         const attemptedChapters = attemptedChaptersBySubject.get(subjectName) ?? new Set<string>();
         attemptedChapters.add(chapterLabel);
         attemptedChaptersBySubject.set(subjectName, attemptedChapters);
 
+        // Calculate accuracy per topic
         const key = `${subjectName}::${topicName}`;
         const currentStats = statsBySubjectTopic.get(key) ?? { correct: 0, total: 0 };
         currentStats.total += 1;
@@ -333,34 +344,112 @@ export class DashboardService {
         statsBySubjectTopic.set(key, currentStats);
       });
 
+      // Mark topics with accuracy < 70% as weak spots
       statsBySubjectTopic.forEach((stats, key) => {
         if (stats.total === 0) {
           return;
         }
 
         const accuracy = (stats.correct / stats.total) * 100;
-        if (accuracy >= 70) {
-          return;
+        if (accuracy < 70) {
+          const [subjectName, topicName] = key.split("::");
+          
+          // Count unique weak topics per subject
+          if (!subjectWeakTopicsDetail.has(subjectName)) {
+            subjectWeakTopicsDetail.set(subjectName, new Set<string>());
+          }
+          subjectWeakTopicsDetail.get(subjectName)!.add(topicName);
         }
+      });
 
-        const [subjectName] = key.split("::");
-        weakTopicCounts.set(subjectName, (weakTopicCounts.get(subjectName) ?? 0) + 1);
+      // Convert weak topic sets to counts
+      subjectWeakTopicsDetail.forEach((topics, subject) => {
+        weakTopicCounts.set(subject, topics.size);
       });
     }
 
+    // Step 4: Build dashboard data with real metrics
     return Array.from(subjectChapters.entries())
       .map(([subject, chapters]) => {
         const totalChapters = chapters.size;
         const chaptersTaken = attemptedChaptersBySubject.get(subject)?.size ?? 0;
+        const weakTopics = weakTopicCounts.get(subject) ?? 0;
+
         return {
           subject,
           totalChapters,
           chaptersTaken,
           chaptersLeft: Math.max(0, totalChapters - chaptersTaken),
-          weakTopics: weakTopicCounts.get(subject) ?? 0
+          weakTopics
         };
       })
+      .filter((x) => x.totalChapters > 0) // Only show subjects with actual content
       .sort((a, b) => a.subject.localeCompare(b.subject));
+  }
+
+  async getSubjectStatistics(studentId: string): Promise<
+    Array<{
+      subject: string;
+      totalAttempts: number;
+      averageScore: number;
+      examAttempts: number;
+      quizAttempts: number;
+      lastAttemptDate: string | null;
+    }>
+  > {
+    try {
+      const { data: attempts, error: attemptsError } = await this.client
+        .from("exam_attempts")
+        .select("id, score, submitted_at, mock_exams(title, subjects(name))")
+        .eq("student_id", studentId)
+        .not("submitted_at", "is", null)
+        .order("submitted_at", { ascending: false });
+
+      if (attemptsError) throw attemptsError;
+
+      const statsBySubject = new Map<
+        string,
+        {
+          scores: number[];
+          dates: Date[];
+          examCount: number;
+          quizCount: number;
+        }
+      >();
+
+      (attempts ?? []).forEach((attempt: any) => {
+        const subject = attempt.mock_exams?.subjects?.name ?? "Unassigned Subject";
+        const title = attempt.mock_exams?.title ?? "";
+        const isQuiz = title.toLowerCase().includes("quiz");
+
+        if (!statsBySubject.has(subject)) {
+          statsBySubject.set(subject, { scores: [], dates: [], examCount: 0, quizCount: 0 });
+        }
+
+        const stats = statsBySubject.get(subject)!;
+        stats.scores.push(attempt.score || 0);
+        stats.dates.push(new Date(attempt.submitted_at));
+        if (isQuiz) {
+          stats.quizCount++;
+        } else {
+          stats.examCount++;
+        }
+      });
+
+      return Array.from(statsBySubject.entries())
+        .map(([subject, stats]) => ({
+          subject,
+          totalAttempts: stats.scores.length,
+          averageScore: stats.scores.length > 0 ? Math.round((stats.scores.reduce((a, b) => a + b, 0) / stats.scores.length) * 100) / 100 : 0,
+          examAttempts: stats.examCount,
+          quizAttempts: stats.quizCount,
+          lastAttemptDate: stats.dates.length > 0 ? stats.dates[0].toISOString().split("T")[0] : null
+        }))
+        .sort((a, b) => a.subject.localeCompare(b.subject));
+    } catch (error) {
+      console.error("Error fetching subject statistics:", error);
+      throw error;
+    }
   }
 
   private async calculateStudyStreak(studentId: string): Promise<number> {
