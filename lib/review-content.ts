@@ -6,6 +6,9 @@ const TITLE_PREFIX_BY_TYPE: Record<ImportType, string> = {
   flashcard: "[FLASHCARD]"
 };
 
+const LABEL_PATTERN = /(chapter|exam)\s+(\d+(?:\s*[-–]\s*\d+)?|[a-z]+)/i;
+const LABEL_PREFIX_PATTERN = /^(chapter|exam)\s+(\d+(?:\s*[-–]\s*\d+)?|[a-z]+)(?:\s*:\s*|\s+)/i;
+
 export function getImportPrefix(importType: ImportType) {
   return TITLE_PREFIX_BY_TYPE[importType];
 }
@@ -39,8 +42,14 @@ export function inferChapterLabel(value: string | null | undefined) {
     return null;
   }
 
-  const match = value.match(/chapter\s+([a-z0-9]+)/i);
-  return match ? `Chapter ${match[1]}` : null;
+  const match = value.match(LABEL_PATTERN);
+  if (!match) {
+    return null;
+  }
+
+  const labelType = match[1].toLowerCase() === "exam" ? "Exam" : "Chapter";
+  const normalized = match[2].replace(/\s*[-–]\s*/g, "-");
+  return `${labelType} ${normalized}`;
 }
 
 export function stripChapterFromTopic(topic: string | null | undefined) {
@@ -48,7 +57,16 @@ export function stripChapterFromTopic(topic: string | null | undefined) {
     return "General";
   }
 
-  return topic.replace(/^chapter\s+[a-z0-9]+\s*:\s*/i, "").trim() || topic.trim();
+  const trimmed = topic.trim();
+  const withoutChapterPrefix = trimmed.replace(LABEL_PREFIX_PATTERN, "").trim();
+
+  if (!withoutChapterPrefix) {
+    return "General";
+  }
+
+  const duplicateMatch = withoutChapterPrefix.match(/^(.+?)\s*:\s*\1$/i);
+  const collapsed = (duplicateMatch ? duplicateMatch[1] : withoutChapterPrefix).trim();
+  return collapsed || "General";
 }
 
 function getChapterOrderValue(label: string | null | undefined) {
@@ -56,19 +74,20 @@ function getChapterOrderValue(label: string | null | undefined) {
     return Number.POSITIVE_INFINITY;
   }
 
-  const match = label.match(/chapter\s+(\d+|[a-z]+)/i);
+  const match = label.match(LABEL_PATTERN);
   if (!match) {
     return Number.POSITIVE_INFINITY;
   }
 
-  const rawValue = match[1].toLowerCase();
+  const labelTypeWeight = match[1].toLowerCase() === "exam" ? 10000 : 0;
+  const rawValue = match[2].toLowerCase();
   const numericValue = Number.parseInt(rawValue, 10);
   if (!Number.isNaN(numericValue)) {
-    return numericValue;
+    return labelTypeWeight + numericValue;
   }
 
   const alphabetValue = rawValue.charCodeAt(0) - 96;
-  return alphabetValue > 0 ? alphabetValue : Number.POSITIVE_INFINITY;
+  return alphabetValue > 0 ? labelTypeWeight + alphabetValue : Number.POSITIVE_INFINITY;
 }
 
 export function compareChapterLabels(left: string | null | undefined, right: string | null | undefined) {

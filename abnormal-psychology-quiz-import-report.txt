@@ -1,0 +1,20 @@
+Abnormal Psychology PDF import report
+Total exported rows: 530
+
+Chapter 1: 40 questions | topic `chapter-1-overview`
+Chapter 2: 35 questions | topic `an-integrative-approach-to-psychopathology`
+Chapter 3: 35 questions | topic `clinical-assessment-and-diagnosis`
+Chapter 5: 35 questions | topic `anxiety-trauma-and-stressor-related-and-obsessive-compulsive-and-related-disorders`
+Chapter 6: 35 questions | topic `somatic-symptom-and-related-disorders-and-dissociative-disorders`
+Chapter 7: 35 questions | topic `mood-disorders-and-suicide`
+Chapter 8: 35 questions | topic `eating-and-sleepwake-disorders`
+Chapter 9: 35 questions | topic `physical-disorders-and-health-psychology`
+Chapter 10: 35 questions | topic `sexual-dysfunctions-paraphilic-disorders-and-gender-dysphoria`
+Chapter 11: 35 questions | topic `substance-related-addictive-and-impulse-control-disorders`
+Chapter 12: 35 questions | topic `personality-disorders`
+Chapter 13: 35 questions | topic `schizophrenia-spectrum-and-other-psychotic-disorders`
+Chapter 14: 35 questions | topic `neurodevelopmental-disorders`
+Chapter 15: 35 questions | topic `neurocognitive-disorders`
+Chapter 16: 35 questions | topic `mental-health-services-legal-and-ethical-issues`
+Skipped Chapter 4 because no recoverable chapter content was present in the extracted PDF text.
+Chapter 1 topic was set to `chapter-1-overview` because the extracted PDF text did not expose a visible subtitle for that chapter.

@@ -1,0 +1,14 @@
+Industrial/Organizational Psychology mock exam PDF import report
+Total exported rows: 1000
+
+Exam 1: 100 questions
+Exam 2: 100 questions
+Exam 3: 100 questions
+Exam 4: 100 questions
+Exam 5: 100 questions
+Exam 6: 100 questions
+Exam 7: 100 questions
+Exam 8: 100 questions
+Exam 9: 100 questions
+Exam 10: 100 questions
+Chapter and Topic were both set to `Exam N` because this import is organized by exam set, not by chapter or subtopic.

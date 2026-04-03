@@ -58,27 +58,58 @@ export function OfflineSupport() {
     }
 
     const routesToWarm = userRole === "admin" ? ADMIN_OFFLINE_ROUTES : STUDENT_OFFLINE_ROUTES;
+    let cancelled = false;
 
     const warmRoutes = async () => {
-      try {
-        await Promise.all(
-          routesToWarm.map((route) =>
-            fetch(route, {
-              credentials: "include",
-              headers: {
-                Accept: "text/html"
-              }
-            }).catch(() => undefined)
-          )
-        );
+      if (!window.navigator.onLine) {
+        return;
+      }
 
-        window.localStorage.setItem(warmedKey, "true");
+      try {
+        for (const route of routesToWarm) {
+          if (cancelled) {
+            break;
+          }
+
+          await fetch(route, {
+            credentials: "include",
+            headers: {
+              Accept: "text/html"
+            }
+          }).catch(() => undefined);
+
+          await new Promise((resolve) => {
+            window.setTimeout(resolve, 120);
+          });
+        }
+
+        if (!cancelled) {
+          window.localStorage.setItem(warmedKey, "true");
+        }
       } catch {
         // Ignore warmup failures. The service worker will still cache pages as the user visits them.
       }
     };
 
+    if ("requestIdleCallback" in window) {
+      const idleCallbackId = window.requestIdleCallback(
+        () => {
+          void warmRoutes();
+        },
+        { timeout: 4000 }
+      );
+
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(idleCallbackId);
+      };
+    }
+
     void warmRoutes();
+
+    return () => {
+      cancelled = true;
+    };
   }, [loading, userId, userRole]);
 
   useEffect(() => {

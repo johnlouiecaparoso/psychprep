@@ -29,7 +29,7 @@ export default async function AdminPage() {
     supabase.from("exam_answers").select("is_correct, exam_questions(topics(name))"),
     supabase.from("mock_exams").select("id, title, subjects(name)"),
     supabase.from("exam_questions").select("mock_exam_id, topics(name)"),
-    supabase.from("review_materials").select("id, subject, topic")
+    supabase.from("review_materials").select("id, subjects(name), topics(name)")
   ]);
 
   const subjectMap = new Map<string, number[]>();
@@ -119,8 +119,8 @@ export default async function AdminPage() {
   });
 
   (reviewersRes.data ?? []).forEach((material: any) => {
-    const subjectName = material.subject ?? "Unassigned Subject";
-    const chapter = material.topic ?? "General";
+    const subjectName = material.subjects?.name ?? "Unassigned Subject";
+    const chapter = material.topics?.name ?? "General";
     const current = subjectBreakdown.reviewer.get(subjectName) ?? { count: 0, chapters: new Map<string, number>() };
     current.count += 1;
     current.chapters.set(chapter, (current.chapters.get(chapter) ?? 0) + 1);

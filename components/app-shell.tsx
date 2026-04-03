@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BookOpenText,
@@ -34,7 +35,7 @@ const LAST_ROLE_STORAGE_KEY = "psychboard-last-role";
 const LAST_ROUTE_STORAGE_KEY = "psychboard-last-route";
 
 type NavItem = {
-  href: string;
+  href: Route;
   label: string;
   icon: ComponentType<{ className?: string }>;
 };
@@ -164,7 +165,7 @@ function AdminSidebarActions() {
 export function AppShell({
   role,
   title,
-  description,
+  description: _description,
   children
 }: {
   role: Role;
@@ -173,6 +174,7 @@ export function AppShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -208,6 +210,33 @@ export function AppShell({
     window.localStorage.setItem(LAST_ROLE_STORAGE_KEY, role);
     window.localStorage.setItem(LAST_ROUTE_STORAGE_KEY, pathname);
   }, [pathname, role]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.navigator.onLine) {
+      return;
+    }
+
+    const routesToPrefetch: Route[] = [
+      ...new Set([
+        ...navByRole[role].map((item) => item.href),
+        "/profile" as Route,
+        "/settings" as Route
+      ])
+    ];
+
+    const prefetchRoutes = () => {
+      routesToPrefetch.forEach((route) => {
+        router.prefetch(route);
+      });
+    };
+
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(prefetchRoutes, { timeout: 2500 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    prefetchRoutes();
+  }, [role, router]);
 
   const sidebar = (
     <aside
@@ -250,6 +279,7 @@ export function AppShell({
                     <Link
                       key={item.href}
                       href={item.href as any}
+                      prefetch
                       className={cn(
                         "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition sm:rounded-2xl sm:py-3",
                         isActive
@@ -275,6 +305,7 @@ export function AppShell({
                     <Link
                       key={item.href}
                       href={item.href as any}
+                      prefetch
                       className={cn(
                         "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition sm:rounded-2xl sm:py-3",
                         isActive
@@ -297,6 +328,7 @@ export function AppShell({
                 <Link
                   key={item.href}
                   href={item.href as any}
+                  prefetch
                   className={cn(
                     "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition sm:rounded-2xl sm:py-3",
                     isActive
@@ -348,7 +380,6 @@ export function AppShell({
                   </button>
                   <div className="min-w-0">
                     <h1 className="break-words text-xl font-bold tracking-tight sm:text-3xl">{title}</h1>
-                    <p className="mt-2 max-w-3xl break-words text-sm text-muted-foreground">{description}</p>
                   </div>
                 </div>
                 {role === "admin" ? null : <UserMenu role={role} />}

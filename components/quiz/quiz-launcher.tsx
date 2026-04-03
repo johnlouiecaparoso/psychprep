@@ -9,6 +9,55 @@ import { useOfflineStudyPack } from "@/components/exam/use-offline-study-pack";
 import { compareChapterLabels } from "@/lib/review-content";
 import type { MockExamSummary } from "@/lib/types";
 
+function extractChapterBase(label: string) {
+  const match = label.match(/^(chapter\s*[0-9]+(?:\s*[-–]\s*[0-9]+)?)/i);
+  return match ? match[1].trim() : label.trim();
+}
+
+function normalizeTopicForDisplay(value: string, chapterBase: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const withoutChapterPrefix = trimmed
+    .replace(/^chapter\s*[0-9]+(?:\s*[-–]\s*[0-9]+)?\s*:\s*/i, "")
+    .replace(/^chapter\s*[0-9]+(?:\s*[-–]\s*[0-9]+)?\s+/i, "")
+    .trim();
+
+  const repeatedPhraseMatch = withoutChapterPrefix.match(/^(.+?)\s*:\s*\1$/i);
+  const collapsed = repeatedPhraseMatch ? repeatedPhraseMatch[1].trim() : withoutChapterPrefix;
+
+  if (!collapsed) {
+    return "";
+  }
+
+  if (collapsed.toLowerCase() === chapterBase.toLowerCase()) {
+    return "";
+  }
+
+  if (/^chapter\s*[0-9]+(?:\s*[-–]\s*[0-9]+)?$/i.test(collapsed)) {
+    return "";
+  }
+
+  return collapsed;
+}
+
+function buildChapterDisplayTitle(exam: MockExamSummary & { chapterLabel: string }) {
+  const chapterLabel = exam.chapter ?? exam.chapterLabel;
+  const chapterBase = extractChapterBase(chapterLabel);
+  const descriptorFromLabel = normalizeTopicForDisplay(chapterLabel.slice(chapterBase.length), chapterBase);
+  if (descriptorFromLabel) {
+    return `${chapterBase} ${descriptorFromLabel}`;
+  }
+
+  const topic = exam.topics
+    .map((item) => normalizeTopicForDisplay(item, chapterBase))
+    .find((item) => Boolean(item));
+
+  return topic ? `${chapterBase} ${topic}` : chapterLabel;
+}
+
 export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
   const router = useRouter();
   const [limits, setLimits] = React.useState<Record<string, string>>({});
@@ -221,6 +270,7 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
           const selectedDuration = durations[exam.id] ?? String(Math.max(defaultLimit * 2, 10));
           const isShuffled = shuffle[exam.id] ?? true;
           const isOpen = openExamId === exam.id;
+          const chapterDisplayTitle = buildChapterDisplayTitle(exam);
 
           return (
             <Card key={exam.id}>
@@ -232,10 +282,9 @@ export function QuizLauncher({ exams }: { exams: MockExamSummary[] }) {
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <CardTitle>{exam.chapterLabel}</CardTitle>
+                      <CardTitle>{chapterDisplayTitle}</CardTitle>
                       {availableOffline[exam.id] ? <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">Offline ready</span> : null}
                     </div>
-                    <p className="mt-2 break-words text-sm text-muted-foreground">{exam.title}</p>
                   </div>
                   <ChevronDown className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
                 </button>

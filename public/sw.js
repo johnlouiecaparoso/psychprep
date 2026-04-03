@@ -1,6 +1,6 @@
-const APP_SHELL_CACHE = "psychboard-app-shell-v4";
-const PAGE_CACHE = "psychboard-pages-v4";
-const DATA_CACHE = "psychboard-data-v4";
+const APP_SHELL_CACHE = "psychboard-app-shell-v5";
+const PAGE_CACHE = "psychboard-pages-v5";
+const DATA_CACHE = "psychboard-data-v5";
 const OFFLINE_URL = "/offline";
 const LAST_PAGE_FALLBACK_KEY = "/__offline-last-page__";
 const IS_DEV_HOST =
@@ -91,23 +91,38 @@ self.addEventListener("fetch", (event) => {
 
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const responseClone = response.clone();
-          caches.open(PAGE_CACHE).then((cache) => cache.put(event.request, responseClone));
-          void rememberLastPage(event.request, response.clone());
-          return response;
-        })
-        .catch(async () => {
-          const cachedPage = await caches.match(event.request);
-          const lastKnownPage = await caches.match(LAST_PAGE_FALLBACK_KEY);
+      (async () => {
+        const pageCache = await caches.open(PAGE_CACHE);
+        const cachedPage = await pageCache.match(event.request);
 
-          if (requestUrl.pathname === "/") {
-            return lastKnownPage || cachedPage || caches.match(OFFLINE_URL);
-          }
+        const networkPromise = fetch(event.request)
+          .then(async (response) => {
+            if (response && response.status === 200) {
+              await pageCache.put(event.request, response.clone());
+              await rememberLastPage(event.request, response.clone());
+            }
 
-          return cachedPage || lastKnownPage || caches.match(OFFLINE_URL);
-        })
+            return response;
+          })
+          .catch(() => null);
+
+        if (cachedPage) {
+          void networkPromise;
+          return cachedPage;
+        }
+
+        const networkResponse = await networkPromise;
+        if (networkResponse) {
+          return networkResponse;
+        }
+
+        const lastKnownPage = await pageCache.match(LAST_PAGE_FALLBACK_KEY);
+        if (requestUrl.pathname === "/") {
+          return lastKnownPage || caches.match(OFFLINE_URL);
+        }
+
+        return lastKnownPage || caches.match(OFFLINE_URL);
+      })()
     );
     return;
   }
@@ -132,34 +147,67 @@ self.addEventListener("fetch", (event) => {
 
   if (isRouteDataRequest(requestUrl)) {
     event.respondWith(
-      caches.match(event.request).then(async (cachedResponse) => {
-        try {
-          const networkResponse = await fetch(event.request);
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(DATA_CACHE).then((cache) => cache.put(event.request, responseClone));
-          }
-          return networkResponse;
-        } catch {
-          return cachedResponse || caches.match(OFFLINE_URL);
+      (async () => {
+        const dataCache = await caches.open(DATA_CACHE);
+        const cachedResponse = await dataCache.match(event.request);
+
+        const networkPromise = fetch(event.request)
+          .then(async (networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              await dataCache.put(event.request, networkResponse.clone());
+            }
+
+            return networkResponse;
+          })
+          .catch(() => null);
+
+        if (cachedResponse) {
+          void networkPromise;
+          return cachedResponse;
         }
-      })
+
+        const networkResponse = await networkPromise;
+        if (networkResponse) {
+          return networkResponse;
+        }
+
+        return new Response("", {
+          status: 204,
+          headers: {
+            "Content-Type": "text/plain"
+          }
+        });
+      })()
     );
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then(async (cachedResponse) => {
-      try {
-        const networkResponse = await fetch(event.request);
-        if (networkResponse && networkResponse.status === 200) {
-          const responseClone = networkResponse.clone();
-          caches.open(DATA_CACHE).then((cache) => cache.put(event.request, responseClone));
-        }
-        return networkResponse;
-      } catch {
-        return cachedResponse || caches.match(OFFLINE_URL);
+    (async () => {
+      const dataCache = await caches.open(DATA_CACHE);
+      const cachedResponse = await dataCache.match(event.request);
+
+      const networkPromise = fetch(event.request)
+        .then(async (networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            await dataCache.put(event.request, networkResponse.clone());
+          }
+
+          return networkResponse;
+        })
+        .catch(() => null);
+
+      if (cachedResponse) {
+        void networkPromise;
+        return cachedResponse;
       }
-    })
+
+      const networkResponse = await networkPromise;
+      if (networkResponse) {
+        return networkResponse;
+      }
+
+      return caches.match(OFFLINE_URL);
+    })()
   );
 });

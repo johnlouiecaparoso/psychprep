@@ -27,6 +27,54 @@ function formatExamSetLabel(value: string, fallbackIndex: number) {
   return trimmed;
 }
 
+function extractSetBase(label: string) {
+  const match = label.match(/^(exam\s*[0-9]+(?:\s*[-–]\s*[0-9]+)?)/i);
+  return match ? match[1].trim() : label.trim();
+}
+
+function normalizeSetTopicForDisplay(value: string, setBase: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const withoutPrefix = trimmed
+    .replace(/^(chapter|exam)\s*[0-9]+(?:\s*[-–]\s*[0-9]+)?\s*:\s*/i, "")
+    .replace(/^(chapter|exam)\s*[0-9]+(?:\s*[-–]\s*[0-9]+)?\s+/i, "")
+    .trim();
+
+  const repeatedPhraseMatch = withoutPrefix.match(/^(.+?)\s*:\s*\1$/i);
+  const collapsed = repeatedPhraseMatch ? repeatedPhraseMatch[1].trim() : withoutPrefix;
+
+  if (!collapsed) {
+    return "";
+  }
+
+  if (collapsed.toLowerCase() === setBase.toLowerCase()) {
+    return "";
+  }
+
+  if (/^(chapter|exam)\s*[0-9]+(?:\s*[-–]\s*[0-9]+)?$/i.test(collapsed)) {
+    return "";
+  }
+
+  return collapsed;
+}
+
+function buildExamDisplayTitle(exam: MockExamSummary & { setLabel: string }) {
+  const setBase = extractSetBase(exam.setLabel);
+  const descriptorFromLabel = normalizeSetTopicForDisplay(exam.setLabel.slice(setBase.length), setBase);
+  if (descriptorFromLabel) {
+    return `${setBase} ${descriptorFromLabel}`;
+  }
+
+  const topic = exam.topics
+    .map((item) => normalizeSetTopicForDisplay(item, setBase))
+    .find((item) => Boolean(item));
+
+  return topic ? `${setBase} ${topic}` : exam.setLabel;
+}
+
 export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
   const router = useRouter();
   const [durations, setDurations] = React.useState<Record<string, string>>({});
@@ -235,6 +283,7 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
           const selectedDuration = durations[exam.id] ?? "45";
           const isShuffled = shuffle[exam.id] ?? false;
           const isOpen = openExamId === exam.id;
+          const displaySetTitle = buildExamDisplayTitle(exam);
 
           return (
             <Card key={exam.id}>
@@ -246,10 +295,9 @@ export function MockExamLauncher({ exams }: { exams: MockExamSummary[] }) {
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <CardTitle>{exam.setLabel}</CardTitle>
+                      <CardTitle>{displaySetTitle}</CardTitle>
                       {availableOffline[exam.id] ? <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">Offline ready</span> : null}
                     </div>
-                    <p className="mt-2 break-words text-sm text-muted-foreground">{exam.title}</p>
                   </div>
                   <ChevronDown className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
                 </button>

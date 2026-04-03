@@ -42,7 +42,7 @@ export async function getMockExamSummaries(
 
   if (error) throw error;
 
-  return (data ?? [])
+  const rawSummaries = (data ?? [])
     .filter((exam: any) => detectImportTypeFromTitle(exam.title ?? "") === contentType)
     .flatMap<MockExamSummary>((exam: any) => {
       const normalizedTitle = stripUploadSuffix(stripImportPrefix(exam.title ?? ""));
@@ -93,6 +93,27 @@ export async function getMockExamSummaries(
           topicCount: new Set(entries.map((entry) => entry.topicId).filter(Boolean)).size
         }));
     });
+
+  const dedupedSummaries: MockExamSummary[] = [];
+  const seen = new Set<string>();
+
+  for (const summary of rawSummaries) {
+    const dedupeKey = [
+      summary.subject.trim().toLowerCase(),
+      summary.title.trim().toLowerCase(),
+      (summary.chapter ?? "").trim().toLowerCase(),
+      [...summary.topics].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base", numeric: true })).join("|")
+    ].join("::");
+
+    if (seen.has(dedupeKey)) {
+      continue;
+    }
+
+    seen.add(dedupeKey);
+    dedupedSummaries.push(summary);
+  }
+
+  return dedupedSummaries;
 }
 
 export async function getQuestionBankRows(

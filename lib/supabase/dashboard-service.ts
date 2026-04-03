@@ -1,4 +1,5 @@
 import { createClient } from "./client";
+import { inferChapterLabel, stripChapterFromTopic } from "@/lib/review-content";
 
 type SupabaseClient = ReturnType<typeof createClient>;
 
@@ -40,6 +41,14 @@ export interface StudentStudyOverview {
 export interface SubjectSummary {
   name: string;
   examCount: number;
+}
+
+export interface SubjectDashboardGraphPoint {
+  subject: string;
+  totalChapters: number;
+  chaptersTaken: number;
+  chaptersLeft: number;
+  weakTopics: number;
 }
 
 export class DashboardService {
@@ -245,6 +254,113 @@ export class DashboardService {
     return Array.from(subjectMap.entries())
       .map(([name, examCount]) => ({ name, examCount }))
       .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getSubjectDashboardGraphData(studentId: string): Promise<SubjectDashboardGraphPoint[]> {
+    const { data: questions, error: questionsError } = await this.client
+      .from("exam_questions")
+      .select("id, topics(name), subjects(name), mock_exams(title, subjects(name))");
+
+    if (questionsError) {
+      throw questionsError;
+    }
+
+    const subjectChapters = new Map<string, Set<string>>();
+
+    const resolveChapterLabel = (topicName: string | null | undefined, examTitle: string | null | undefined) => {
+      return (
+        inferChapterLabel(topicName) ??
+        inferChapterLabel(examTitle) ??
+        (topicName ? stripChapterFromTopic(topicName) : null) ??
+        "General"
+      );
+    };
+
+    (questions ?? []).forEach((question: any) => {
+      const subjectName = question.subjects?.name ?? question.mock_exams?.subjects?.name ?? "Unassigned Subject";
+      const chapterLabel = resolveChapterLabel(question.topics?.name, question.mock_exams?.title);
+      const current = subjectChapters.get(subjectName) ?? new Set<string>();
+      current.add(chapterLabel);
+      subjectChapters.set(subjectName, current);
+    });
+
+    const { data: attempts, error: attemptsError } = await this.client
+      .from("exam_attempts")
+      .select("id, mock_exam_id")
+      .eq("student_id", studentId)
+      .not("submitted_at", "is", null);
+
+    if (attemptsError) {
+      throw attemptsError;
+    }
+
+    const subjectTakenChapters = new Map<string, Set<string>>();
+    const attemptIds: string[] = [];
+
+    (attempts ?? []).forEach((attempt: any) => {
+      attemptIds.push(attempt.id);
+    });
+
+    const weakTopicCounts = new Map<string, number>();
+    const attemptedChaptersBySubject = new Map<string, Set<string>>();
+
+    if (attemptIds.length > 0) {
+      const { data: answers, error: answersError } = await this.client
+        .from("exam_answers")
+        .select("is_correct, exam_questions(topics(name), subjects(name), mock_exams(title, subjects(name)))")
+        .in("attempt_id", attemptIds);
+
+      if (answersError) {
+        throw answersError;
+      }
+
+      const statsBySubjectTopic = new Map<string, { correct: number; total: number }>();
+      (answers ?? []).forEach((answer: any) => {
+        const question = answer.exam_questions;
+        const subjectName = question?.subjects?.name ?? question?.mock_exams?.subjects?.name ?? "Unassigned Subject";
+        const topicName = question?.topics?.name ?? "General";
+        const chapterLabel = resolveChapterLabel(topicName, question?.mock_exams?.title);
+        const attemptedChapters = attemptedChaptersBySubject.get(subjectName) ?? new Set<string>();
+        attemptedChapters.add(chapterLabel);
+        attemptedChaptersBySubject.set(subjectName, attemptedChapters);
+
+        const key = `${subjectName}::${topicName}`;
+        const currentStats = statsBySubjectTopic.get(key) ?? { correct: 0, total: 0 };
+        currentStats.total += 1;
+        if (answer.is_correct) {
+          currentStats.correct += 1;
+        }
+        statsBySubjectTopic.set(key, currentStats);
+      });
+
+      statsBySubjectTopic.forEach((stats, key) => {
+        if (stats.total === 0) {
+          return;
+        }
+
+        const accuracy = (stats.correct / stats.total) * 100;
+        if (accuracy >= 70) {
+          return;
+        }
+
+        const [subjectName] = key.split("::");
+        weakTopicCounts.set(subjectName, (weakTopicCounts.get(subjectName) ?? 0) + 1);
+      });
+    }
+
+    return Array.from(subjectChapters.entries())
+      .map(([subject, chapters]) => {
+        const totalChapters = chapters.size;
+        const chaptersTaken = attemptedChaptersBySubject.get(subject)?.size ?? 0;
+        return {
+          subject,
+          totalChapters,
+          chaptersTaken,
+          chaptersLeft: Math.max(0, totalChapters - chaptersTaken),
+          weakTopics: weakTopicCounts.get(subject) ?? 0
+        };
+      })
+      .sort((a, b) => a.subject.localeCompare(b.subject));
   }
 
   private async calculateStudyStreak(studentId: string): Promise<number> {
